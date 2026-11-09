@@ -29,6 +29,10 @@ class ProjectNotFoundError(FileNotFoundError):
     pass
 
 
+class PageNotFoundError(LookupError):
+    pass
+
+
 class ProjectStore:
     """Stores each project in an isolated directory using an atomic JSON file."""
 
@@ -80,6 +84,22 @@ class ProjectStore:
         except Exception:
             temporary_path.unlink(missing_ok=True)
             raise
+
+    def _save_document(self, project_id: UUID | str, document: ProjectDocument) -> ProjectDocument:
+        current = self._read(project_id)
+        if document.project.id != current.project.id:
+            raise ValueError("Project identifier cannot be changed")
+        if document.project.created_at != current.project.created_at:
+            raise ValueError("Project creation date cannot be changed")
+        updated = document.model_copy(
+            update={
+                "project": document.project.model_copy(
+                    update={"updated_at": datetime.now(timezone.utc)}
+                )
+            }
+        )
+        self._atomic_write(self._project_dir(project_id), updated)
+        return updated
 
     def create(self, name: str) -> ProjectDocument:
         normalized_name = name.strip()
@@ -139,21 +159,84 @@ class ProjectStore:
             raise ValueError("Project identifier cannot be changed")
         if candidate.project.created_at != current.project.created_at:
             raise ValueError("Project creation date cannot be changed")
+        return self._save_document(project_id, candidate)
 
-        updated = candidate.model_copy(
-            update={
-                "project": candidate.project.model_copy(
-                    update={"updated_at": datetime.now(timezone.utc)}
-                )
-            }
+    def create_page(self, project_id: UUID | str, title: str, slug: str) -> ProjectDocument:
+        document = self._read(project_id)
+        page = ProjectPage(
+            id=uuid4(),
+            title=title.strip(),
+            slug=slug.strip().lower(),
+            is_home=False,
+            content=PageContent(),
         )
-        self._atomic_write(self._project_dir(project_id), updated)
-        return updated
+        document = document.model_copy(update={"pages": [*document.pages, page]})
+        return self._save_document(project_id, ProjectDocument.model_validate(document.model_dump()))
+
+    def update_page(
+        self, project_id: UUID | str, page_id: UUID | str, title: str, slug: str
+    ) -> ProjectDocument:
+        document = self._read(project_id)
+        normalized_id = UUID(str(page_id))
+        if not any(page.id == normalized_id for page in document.pages):
+            raise PageNotFoundError("Page not found")
+        pages = [
+            page.model_copy(update={"title": title.strip(), "slug": slug.strip().lower()})
+            if page.id == normalized_id else page
+            for page in document.pages
+        ]
+        candidate = ProjectDocument.model_validate(
+            document.model_copy(update={"pages": pages}).model_dump()
+        )
+        return self._save_document(project_id, candidate)
+
+    def set_home_page(self, project_id: UUID | str, page_id: UUID | str) -> ProjectDocument:
+        document = self._read(project_id)
+        normalized_id = UUID(str(page_id))
+        if not any(page.id == normalized_id for page in document.pages):
+            raise PageNotFoundError("Page not found")
+        pages = [
+            page.model_copy(update={"is_home": page.id == normalized_id})
+            for page in document.pages
+        ]
+        candidate = ProjectDocument.model_validate(
+            document.model_copy(update={"pages": pages}).model_dump()
+        )
+        return self._save_document(project_id, candidate)
+
+    def delete_page(self, project_id: UUID | str, page_id: UUID | str) -> ProjectDocument:
+        document = self._read(project_id)
+        normalized_id = UUID(str(page_id))
+        if not any(page.id == normalized_id for page in document.pages):
+            raise PageNotFoundError("Page not found")
+        if len(document.pages) == 1:
+            raise ValueError("A project must contain at least one page")
+        pages = [page for page in document.pages if page.id != normalized_id]
+        if not any(page.is_home for page in pages):
+            pages[0] = pages[0].model_copy(update={"is_home": True})
+        candidate = ProjectDocument.model_validate(
+            document.model_copy(update={"pages": pages}).model_dump()
+        )
+        return self._save_document(project_id, candidate)
+
+    def reorder_pages(
+        self, project_id: UUID | str, page_ids: list[UUID]
+    ) -> ProjectDocument:
+        document = self._read(project_id)
+        current_ids = {page.id for page in document.pages}
+        if len(page_ids) != len(current_ids) or set(page_ids) != current_ids:
+            raise ValueError("Page order must contain every page exactly once")
+        by_id = {page.id: page for page in document.pages}
+        candidate = ProjectDocument.model_validate(
+            document.model_copy(
+                update={"pages": [by_id[page_id] for page_id in page_ids]}
+            ).model_dump()
+        )
+        return self._save_document(project_id, candidate)
 
     def delete(self, project_id: UUID | str) -> None:
         project_dir = self._project_dir(project_id)
         project_file = project_dir / "project.json"
         if not project_file.is_file():
             raise ProjectNotFoundError(f"Project {project_id} was not found")
-        # UUID normalization prevents user-controlled path traversal.
         shutil.rmtree(project_dir)

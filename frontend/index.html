@@ -65,9 +65,12 @@
             <div class="project-meta" id="project-meta"></div>
           </div>
           <div class="settings-card pages-card">
-            <div class="card-heading">Страницы проекта</div>
+            <div class="pages-heading">
+              <div class="card-heading">Страницы проекта</div>
+              <button class="button button-primary" id="add-page-button" type="button">＋ Добавить страницу</button>
+            </div>
             <div id="page-list" class="page-list"></div>
-            <p class="muted-note">Структура страниц уже хранится в модели проекта. Редактор содержимого будет подключён отдельным этапом.</p>
+            <p class="muted-note">Содержимое страниц пока не редактируется. На этом этапе доступны структура, адреса и главная страница.</p>
           </div>
         </section>
       </section>
@@ -97,8 +100,26 @@
       </form>
     </dialog>
 
+    <dialog id="create-page-dialog" class="dialog">
+      <form id="create-page-form">
+        <div class="dialog-heading">
+          <div><div class="eyebrow">NEW PAGE</div><h2>Добавить страницу</h2></div>
+          <button class="icon-button" id="close-create-page-dialog" type="button" aria-label="Закрыть">×</button>
+        </div>
+        <label class="field-label" for="new-page-title">Название страницы</label>
+        <input class="text-field" id="new-page-title" maxlength="120" placeholder="Например, Контакты" required>
+        <label class="field-label" for="new-page-slug">Адрес страницы</label>
+        <input class="text-field" id="new-page-slug" maxlength="120" pattern="[a-z0-9][a-z0-9-]*" placeholder="kontakty" required>
+        <p class="muted-note">Используйте латинские буквы, цифры и дефисы. Адрес должен быть уникальным.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="cancel-create-page" type="button">Отмена</button>
+          <button class="button button-primary" type="submit">Добавить</button>
+        </div>
+      </form>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <footer class="footer"><span>WEB-Constructor</span><span>Project management · 0.2.0</span></footer>
+    <footer class="footer"><span>WEB-Constructor</span><span>Project management · 0.3.0</span></footer>
   </div>
   <script type="module" src="/scripts/app.js"></script>
 </body>

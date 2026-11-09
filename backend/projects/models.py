@@ -57,6 +57,21 @@ class ProjectPage(StrictModel):
     is_home: bool = False
     content: PageContent = Field(default_factory=PageContent)
 
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Page title cannot be empty")
+        if any(ord(char) < 32 for char in value):
+            raise ValueError("Page title contains control characters")
+        return value
+
+    @field_validator("slug")
+    @classmethod
+    def normalize_slug(cls, value: str) -> str:
+        return value.strip().lower()
+
 
 class ProjectAsset(StrictModel):
     id: UUID
@@ -97,4 +112,7 @@ class ProjectDocument(StrictModel):
         slugs = [page.slug for page in pages]
         if len(slugs) != len(set(slugs)):
             raise ValueError("Page slugs must be unique")
+        page_ids = [page.id for page in pages]
+        if len(page_ids) != len(set(page_ids)):
+            raise ValueError("Page identifiers must be unique")
         return pages

@@ -40,3 +40,23 @@ export const deleteProject = (id) => request(
   `/api/projects/${encodeURIComponent(id)}`,
   { method: "DELETE" },
 );
+const projectPagesPath = (projectId) => `/api/projects/${encodeURIComponent(projectId)}/pages`;
+export const createPage = (projectId, title, slug) => request(projectPagesPath(projectId), {
+  method: "POST", body: JSON.stringify({ title, slug }),
+});
+export const updatePage = (projectId, pageId, title, slug) => request(
+  `${projectPagesPath(projectId)}/${encodeURIComponent(pageId)}`,
+  { method: "PUT", body: JSON.stringify({ title, slug }) },
+);
+export const setHomePage = (projectId, pageId) => request(
+  `${projectPagesPath(projectId)}/${encodeURIComponent(pageId)}/home`,
+  { method: "POST" },
+);
+export const deletePage = (projectId, pageId) => request(
+  `${projectPagesPath(projectId)}/${encodeURIComponent(pageId)}`,
+  { method: "DELETE" },
+);
+export const reorderPages = (projectId, pageIds) => request(
+  `${projectPagesPath(projectId)}/reorder`,
+  { method: "PUT", body: JSON.stringify({ page_ids: pageIds }) },
+);

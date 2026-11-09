@@ -33,14 +33,19 @@
 - pages: id, title, slug, is_home, content.nodes.
 - Каждый узел content.nodes имеет id, type, props и children; вложенность описывает структуру документа независимо от DOM.
 - assets: id, name, path, mime_type; пути ресурсов только относительные и без traversal-сегментов.
-- У проекта ровно одна главная страница; slug страниц уникальны.
+- У проекта хотя бы одна страница и ровно одна главная; slug и page id уникальны.
 
-## API проектов
+## API проектов и страниц
 - GET /api/projects — список.
 - POST /api/projects — создание.
 - GET /api/projects/{id} — открытие.
 - PUT /api/projects/{id} — сохранение.
 - DELETE /api/projects/{id} — удаление.
+- POST /api/projects/{id}/pages — создание страницы.
+- PUT /api/projects/{id}/pages/{page_id} — изменение названия и slug.
+- POST /api/projects/{id}/pages/{page_id}/home — назначение главной.
+- DELETE /api/projects/{id}/pages/{page_id} — удаление; при удалении главной первая оставшаяся становится главной.
+- PUT /api/projects/{id}/pages/reorder — изменение порядка с обязательным полным списком UUID страниц.
 
 ## Запуск
 launch.vbs → pythonw.exe → main.py → проверка/создание .venv и зависимостей → FastAPI/Uvicorn → окно pywebview.

@@ -155,3 +155,58 @@ def test_page_content_uses_nested_editor_independent_nodes(tmp_path) -> None:
 
     assert saved.pages[0].content.nodes[0].type == "section"
     assert saved.pages[0].content.nodes[0].children[0].props["text"] == "Hello"
+
+
+def test_page_lifecycle_home_page_and_order(tmp_path) -> None:
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create("Pages")
+
+    created = store.create_page(project.project.id, "Contacts", "contacts")
+    contacts = created.pages[1]
+    assert contacts.title == "Contacts"
+    assert contacts.is_home is False
+
+    updated = store.update_page(project.project.id, contacts.id, "Contact us", "contact-us")
+    assert updated.pages[1].title == "Contact us"
+    assert updated.pages[1].slug == "contact-us"
+
+    promoted = store.set_home_page(project.project.id, contacts.id)
+    assert promoted.pages[0].is_home is False
+    assert promoted.pages[1].is_home is True
+
+    reordered = store.reorder_pages(
+        project.project.id, [contacts.id, project.pages[0].id]
+    )
+    assert [page.id for page in reordered.pages] == [contacts.id, project.pages[0].id]
+    assert reordered.pages[0].is_home is True
+
+    deleted = store.delete_page(project.project.id, contacts.id)
+    assert len(deleted.pages) == 1
+    assert deleted.pages[0].is_home is True
+
+
+def test_page_delete_promotes_first_remaining_page_and_rejects_last(tmp_path) -> None:
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create("Page deletion")
+    project = store.create_page(project.project.id, "About", "about")
+    project = store.create_page(project.project.id, "Contacts", "contacts")
+
+    deleted = store.delete_page(project.project.id, project.pages[0].id)
+    assert deleted.pages[0].slug == "about"
+    assert deleted.pages[0].is_home is True
+
+    deleted = store.delete_page(project.project.id, deleted.pages[1].id)
+    with pytest.raises(ValueError, match="at least one page"):
+        store.delete_page(project.project.id, deleted.pages[0].id)
+
+
+def test_page_slug_must_be_unique_and_order_must_be_complete(tmp_path) -> None:
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create("Validation")
+    project = store.create_page(project.project.id, "About", "about")
+
+    with pytest.raises(ValueError, match="Page slugs must be unique"):
+        store.create_page(project.project.id, "Duplicate", "about")
+
+    with pytest.raises(ValueError, match="every page exactly once"):
+        store.reorder_pages(project.project.id, [project.pages[0].id])

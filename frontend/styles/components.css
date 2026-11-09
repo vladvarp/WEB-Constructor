@@ -44,3 +44,19 @@
 .toast { position:fixed; right:28px; bottom:28px; z-index:10; max-width:min(420px,calc(100vw - 56px)); padding:13px 17px; border:1px solid rgba(65,199,180,.3); border-radius:9px; color:var(--color-text); background:#1d3036; box-shadow:0 12px 40px rgba(0,0,0,.35); font-size:12px; opacity:0; pointer-events:none; transform:translateY(8px); transition:opacity .18s ease,transform .18s ease; }
 .toast.is-visible { opacity:1; transform:translateY(0); }
 .toast.is-error { border-color:rgba(229,138,138,.35); background:#38252b; }
+
+.button-small { min-height:30px; padding:0 9px; border-radius:6px; font-size:10px; }
+.pages-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.pages-heading .card-heading { margin:0; }
+.page-row { min-width:0; }
+.page-row-details { display:grid; min-width:110px; gap:5px; }
+.page-row-details strong { overflow-wrap:anywhere; }
+.page-row-details>span { color:#7f8fa1; font-size:11px; }
+.page-row-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:5px; margin-left:auto; }
+.page-row.is-first-page .page-row-actions button[title="Переместить выше"],
+.page-row.is-last-page .page-row-actions button[title="Переместить ниже"] { opacity:.3; }
+@media (max-width:760px) {
+  .page-row { align-items:flex-start; flex-wrap:wrap; }
+  .page-row-actions { width:100%; margin-left:0; justify-content:flex-start; }
+  .pages-heading { align-items:flex-start; flex-direction:column; }
+}
