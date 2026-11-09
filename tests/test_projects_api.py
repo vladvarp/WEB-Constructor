@@ -89,4 +89,4 @@ def test_new_project_has_editable_starter_homepage(tmp_path) -> None:
     hero = home.content.nodes[0]
     assert hero.type == "section"
     assert [node.type for node in hero.children] == ["eyebrow", "heading", "paragraph", "button"]
-    assert hero.children[1].props["text"] == "Пространство,\\nв котором хочется жить"
+    assert hero.children[1].props["text"] == "Пространство,\nв котором хочется жить"
