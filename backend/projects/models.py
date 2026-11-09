@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import PurePosixPath
 from typing import Any
 from uuid import UUID
 
@@ -59,6 +60,20 @@ class ProjectAsset(StrictModel):
     name: str = Field(min_length=1, max_length=255)
     path: str = Field(min_length=1, max_length=500)
     mime_type: str = Field(default="application/octet-stream", max_length=120)
+
+    @field_validator("path")
+    @classmethod
+    def require_safe_relative_path(cls, value: str) -> str:
+        normalized = value.replace("\\\\", "/").strip()
+        path = PurePosixPath(normalized)
+        if (
+            not normalized
+            or path.is_absolute()
+            or any(part in {"", ".", ".."} for part in path.parts)
+            or ":" in path.parts[0]
+        ):
+            raise ValueError("Asset path must be a safe relative path")
+        return path.as_posix()
 
 
 class ProjectDocument(StrictModel):
