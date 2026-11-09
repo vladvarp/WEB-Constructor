@@ -175,7 +175,6 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
     canvas.classList.toggle("viewport-mobile", viewport === "mobile");
     canvas.classList.toggle("viewport-desktop", viewport === "desktop");
     page.content.nodes.forEach((node) => canvas.append(drawNode(node)));
-    renderInspector();
   }
 
   function render() {
@@ -183,6 +182,7 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
     undo.disabled = historyIndex <= 0;
     redo.disabled = historyIndex >= history.length - 1;
     renderCanvas();
+    renderInspector();
   }
 
   canvas.addEventListener("click", (event) => {
