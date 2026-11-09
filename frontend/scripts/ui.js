@@ -54,24 +54,24 @@ export function renderProjectCards(projects, onOpen) {
     return;
   }
 
-  for (const document of projects) {
+  for (const projectData of projects) {
     const card = document.createElement("article");
     card.className = "project-card";
     const main = document.createElement("div");
     main.className = "project-card-main";
     const title = document.createElement("h2");
-    title.textContent = document.project.name;
+    title.textContent = projectData.project.name;
     const subtitle = document.createElement("p");
-    subtitle.textContent = document.site.title;
+    subtitle.textContent = projectData.site.title;
     const meta = document.createElement("span");
     meta.className = "project-card-meta";
-    meta.textContent = `${document.pages.length} ${document.pages.length === 1 ? "страница" : "страниц"} · Изменён ${new Date(document.project.updated_at).toLocaleDateString("ru-RU")}`;
+    meta.textContent = `${projectData.pages.length} ${projectData.pages.length === 1 ? "страница" : "страниц"} · Изменён ${new Date(projectData.project.updated_at).toLocaleDateString("ru-RU")}`;
     main.append(title, subtitle, meta);
     const open = document.createElement("button");
     open.className = "button button-secondary";
     open.type = "button";
     open.textContent = "Открыть";
-    open.addEventListener("click", () => onOpen(document.project.id));
+    open.addEventListener("click", () => onOpen(projectData.project.id));
     card.append(main, open);
     list.append(card);
   }
