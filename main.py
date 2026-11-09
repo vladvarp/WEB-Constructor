@@ -98,7 +98,7 @@ def prepare_virtual_environment(project_root: Path = PROJECT_ROOT) -> tuple[Path
     gui_interpreter = get_venv_gui_python(venv_dir)
     marker = venv_dir / REQUIREMENTS_MARKER
 
-    if not interpreter.is_file():
+    if not interpreter.is_file() or not gui_interpreter.is_file():
         logging.getLogger("web_constructor.startup").info(
             "Creating virtual environment at %s", venv_dir
         )
