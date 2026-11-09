@@ -25,9 +25,7 @@ export function showToast(message, isError = false) {
   toast.classList.toggle("is-error", isError);
   toast.classList.add("is-visible");
   window.clearTimeout(showToast.timeoutId);
-  showToast.timeoutId = window.setTimeout(() => {
-    toast.classList.remove("is-visible");
-  }, 3200);
+  showToast.timeoutId = window.setTimeout(() => toast.classList.remove("is-visible"), 3200);
 }
 
 export function renderProjectCards(projects, onOpen) {
@@ -46,9 +44,7 @@ export function renderProjectCards(projects, onOpen) {
     action.className = "button button-primary";
     action.type = "button";
     action.textContent = "Создать проект";
-    action.addEventListener("click", () => {
-      document.querySelector("#create-project-button")?.click();
-    });
+    action.addEventListener("click", () => document.querySelector("#create-project-button")?.click());
     empty.append(title, description, action);
     list.append(empty);
     return;
@@ -77,24 +73,51 @@ export function renderProjectCards(projects, onOpen) {
   }
 }
 
-export function renderPages(pages) {
+export function renderPages(pages, handlers = {}) {
   const list = document.querySelector("#page-list");
   if (!list) return;
   list.replaceChildren();
-  for (const page of pages) {
-    const row = document.createElement("div");
+
+  pages.forEach((page, index) => {
+    const row = document.createElement("article");
     row.className = "page-row";
+    const details = document.createElement("div");
+    details.className = "page-row-details";
     const title = document.createElement("strong");
     title.textContent = page.title;
     const slug = document.createElement("span");
     slug.textContent = `/${page.slug === "index" ? "" : page.slug}`;
-    row.append(title, slug);
+    details.append(title, slug);
+    row.append(details);
+
     if (page.is_home) {
       const home = document.createElement("span");
       home.className = "page-home-label";
       home.textContent = "Главная";
       row.append(home);
     }
+
+    const actions = document.createElement("div");
+    actions.className = "page-row-actions";
+    const addAction = (label, titleText, callback, className = "button-quiet") => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `button button-small ${className}`;
+      button.textContent = label;
+      button.title = titleText;
+      button.addEventListener("click", callback);
+      actions.append(button);
+    };
+    addAction("↑", "Переместить выше", () => handlers.onMove?.(page.id, -1), "button-quiet");
+    addAction("↓", "Переместить ниже", () => handlers.onMove?.(page.id, 1), "button-quiet");
+    addAction("Изменить", "Изменить название и адрес", () => handlers.onEdit?.(page.id), "button-secondary");
+    if (!page.is_home) {
+      addAction("Сделать главной", "Назначить главной", () => handlers.onSetHome?.(page.id), "button-quiet");
+    }
+    addAction("Удалить", "Удалить страницу", () => handlers.onDelete?.(page.id), "button-danger-ghost");
+    row.append(actions);
+    if (index === 0) row.classList.add("is-first-page");
+    if (index === pages.length - 1) row.classList.add("is-last-page");
     list.append(row);
-  }
+  });
 }
