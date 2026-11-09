@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151d">
+  <title>WEB-Constructor</title>
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/layout.css">
+  <link rel="stylesheet" href="/styles/components.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="WEB-Constructor">
+        <span class="brand-mark">W</span><span>WEB-Constructor</span>
+      </a>
+      <div class="topbar-status">
+        <span class="status-dot" id="backend-indicator"></span>
+        <span id="backend-status">Подключение...</span>
+      </div>
+    </header>
+
+    <main class="workspace workspace-projects">
+      <section class="main-panel">
+        <div id="projects-view">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">WORKSPACE</div>
+              <h1 class="section-title">Мои проекты</h1>
+              <p class="welcome-copy">Создавайте сайты и управляйте их исходными данными в одном месте.</p>
+            </div>
+            <button class="button button-primary" id="create-project-button" type="button">＋ Новый проект</button>
+          </div>
+          <div id="project-list" class="project-list" aria-live="polite">
+            <div class="loading-state">Загрузка проектов...</div>
+          </div>
+        </div>
+
+        <section id="project-view" class="project-view" hidden>
+          <div class="project-toolbar">
+            <button class="button button-quiet" id="back-to-projects" type="button">← Все проекты</button>
+            <div class="project-toolbar-actions">
+              <button class="button button-danger-ghost" id="delete-project-button" type="button">Удалить</button>
+              <button class="button button-primary" id="save-project-button" type="button">Сохранить изменения</button>
+            </div>
+          </div>
+          <div class="eyebrow">PROJECT SETTINGS</div>
+          <h1 class="section-title" id="project-heading">Проект</h1>
+          <div class="settings-card">
+            <div class="card-heading">Основные параметры</div>
+            <label class="field-label" for="project-name">Название проекта</label>
+            <input class="text-field" id="project-name" maxlength="80" autocomplete="off">
+            <label class="field-label" for="site-title">Название сайта</label>
+            <input class="text-field" id="site-title" maxlength="120" autocomplete="off">
+            <label class="field-label" for="site-description">Описание сайта</label>
+            <textarea class="text-field text-area" id="site-description" maxlength="500" rows="3"></textarea>
+            <label class="field-label" for="site-language">Язык сайта</label>
+            <select class="text-field" id="site-language">
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+              <option value="nl">Nederlands</option>
+            </select>
+            <div class="project-meta" id="project-meta"></div>
+          </div>
+          <div class="settings-card pages-card">
+            <div class="card-heading">Страницы проекта</div>
+            <div id="page-list" class="page-list"></div>
+            <p class="muted-note">Структура страниц уже хранится в модели проекта. Редактор содержимого будет подключён отдельным этапом.</p>
+          </div>
+        </section>
+      </section>
+
+      <aside class="side-panel">
+        <div class="panel-heading">СОСТОЯНИЕ СИСТЕМЫ</div>
+        <div class="system-row"><span>Локальный сервер</span><strong id="server-state">Проверка</strong></div>
+        <div class="system-row"><span>Модульная система</span><strong id="module-count">Загрузка</strong></div>
+        <div class="system-row"><span>Проекты</span><strong id="project-count">Загрузка</strong></div>
+        <div class="system-row"><span>Формат модели</span><strong>v1</strong></div>
+        <div class="panel-note">Проекты хранятся отдельно от файлов приложения. Данные сохраняются в версионируемом формате JSON.</div>
+      </aside>
+    </main>
+
+    <dialog id="create-project-dialog" class="dialog">
+      <form id="create-project-form">
+        <div class="dialog-heading">
+          <div><div class="eyebrow">NEW PROJECT</div><h2>Создать проект</h2></div>
+          <button class="icon-button" id="close-create-dialog" type="button" aria-label="Закрыть">×</button>
+        </div>
+        <label class="field-label" for="new-project-name">Название проекта</label>
+        <input class="text-field" id="new-project-name" name="name" maxlength="80" placeholder="Например, Корпоративный сайт" required autofocus>
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="cancel-create-project" type="button">Отмена</button>
+          <button class="button button-primary" type="submit">Создать</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <footer class="footer"><span>WEB-Constructor</span><span>Project management · 0.2.0</span></footer>
+  </div>
+  <script type="module" src="/scripts/app.js"></script>
+</body>
+</html>

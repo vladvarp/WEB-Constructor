@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  background: #10151d;
+  color: #edf2f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --color-bg: #10151d;
+  --color-panel: #171f2a;
+  --color-panel-soft: #1d2835;
+  --color-border: rgba(176, 196, 218, .13);
+  --color-text: #edf2f7;
+  --color-muted: #8e9bab;
+  --color-accent: #41c7b4;
+  --color-accent-hover: #58d9c6;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; min-width: 760px; min-height: 100%; margin: 0; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 16% 18%, rgba(38,126,128,.14), transparent 38%), var(--color-bg);
+}
+button { font: inherit; }
