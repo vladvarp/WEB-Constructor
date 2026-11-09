@@ -131,3 +131,27 @@ def test_asset_path_rejects_traversal_and_normalizes_separators() -> None:
     )
 
     assert asset.path == "images/logo.svg"
+
+
+def test_page_content_uses_nested_editor_independent_nodes(tmp_path) -> None:
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create("Node model")
+    data = project.model_dump(mode="json")
+    node_id = str(uuid4())
+    child_id = str(uuid4())
+    data["pages"][0]["content"]["nodes"] = [{
+        "id": node_id,
+        "type": "section",
+        "props": {"class": "hero"},
+        "children": [{
+            "id": child_id,
+            "type": "text",
+            "props": {"text": "Hello"},
+            "children": [],
+        }],
+    }]
+
+    saved = store.save(project.project.id, data)
+
+    assert saved.pages[0].content.nodes[0].type == "section"
+    assert saved.pages[0].content.nodes[0].children[0].props["text"] == "Hello"
