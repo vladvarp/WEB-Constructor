@@ -18,12 +18,16 @@ def acquire_single_instance():
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateMutexW.restype = ctypes.c_void_p
+    ctypes.set_last_error(0)
     mutex = kernel32.CreateMutexW(None, True, "Local\\WEBConstructor.Application")
     if not mutex:
         raise ctypes.WinError(ctypes.get_last_error())
 
-    already_running = ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
-    return (kernel32, mutex), not already_running
+    if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+        kernel32.CloseHandle(mutex)
+        return None, False
+
+    return (kernel32, mutex), True
 
 
 def show_startup_error(message: str) -> None:
