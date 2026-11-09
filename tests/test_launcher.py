@@ -7,9 +7,9 @@ def test_startup_logging_creates_log_file(tmp_path) -> None:
     log_file = tmp_path / "logs" / "application.log"
 
     configure_startup_logging(log_file)
-    logging.getLogger("launcher-test").info("startup marker")
+    logging.getLogger("web_constructor.startup").info("startup marker")
 
-    for handler in logging.getLogger().handlers:
+    for handler in logging.getLogger("web_constructor").handlers:
         handler.flush()
 
     assert log_file.exists()
