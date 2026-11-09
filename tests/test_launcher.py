@@ -53,14 +53,17 @@ def test_prepare_environment_creates_venv_and_installs_requirements(tmp_path) ->
         patch("main.get_venv_python", return_value=interpreter),
         patch("main.get_venv_gui_python", return_value=interpreter),
     ):
-        interpreter.parent.mkdir(parents=True)
-        interpreter.touch()
+        def create_environment(path):
+            interpreter.parent.mkdir(parents=True, exist_ok=True)
+            interpreter.touch()
+
+        create_venv.side_effect = create_environment
         run.return_value.returncode = 0
         run.return_value.stdout = ""
         run.return_value.stderr = ""
 
         _, should_relaunch = prepare_virtual_environment(
-            tmp_path, current_executable=Path(sys.executable)
+            tmp_path
         )
 
     create_venv.assert_called_once()
@@ -91,7 +94,7 @@ def test_prepare_environment_skips_pip_when_requirements_are_current(tmp_path) -
         patch("main.subprocess.run") as run,
     ):
         _, should_relaunch = prepare_virtual_environment(
-            tmp_path, current_executable=interpreter
+            tmp_path
         )
 
     run.assert_not_called()
