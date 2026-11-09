@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151d">
+  <title>WEB-Constructor</title>
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/layout.css">
+  <link rel="stylesheet" href="/styles/components.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="WEB-Constructor">
+        <span class="brand-mark">W</span><span>WEB-Constructor</span>
+      </a>
+      <div class="topbar-status">
+        <span class="status-dot" id="backend-indicator"></span>
+        <span id="backend-status">Подключение...</span>
+      </div>
+    </header>
+    <main class="workspace">
+      <section class="welcome-panel">
+        <div class="eyebrow">WORKSPACE</div>
+        <h1>Создавайте сайты.<br><span>Без ограничений.</span></h1>
+        <p class="welcome-copy">Рабочее пространство для проектирования, редактирования и публикации веб-сайтов.</p>
+        <div class="welcome-actions">
+          <button class="button button-primary" type="button" disabled>Новый проект</button>
+          <button class="button button-secondary" type="button" disabled>Открыть проект</button>
+        </div>
+        <p class="coming-soon">Управление проектами появится на следующем этапе разработки.</p>
+      </section>
+      <aside class="side-panel">
+        <div class="panel-heading">СОСТОЯНИЕ СИСТЕМЫ</div>
+        <div class="system-row"><span>Локальный сервер</span><strong id="server-state">Проверка</strong></div>
+        <div class="system-row"><span>Модульная система</span><strong id="module-count">Загрузка</strong></div>
+        <div class="system-row"><span>Версия основы</span><strong>0.1.0</strong></div>
+        <div class="panel-note">Это начальная версия приложения. Инструменты редактора будут подключаться отдельными модулями.</div>
+      </aside>
+    </main>
+    <footer class="footer"><span>WEB-Constructor</span><span>Application foundation · 0.1.0</span></footer>
+  </div>
+  <script type="module" src="/scripts/app.js"></script>
+</body>
+</html>
