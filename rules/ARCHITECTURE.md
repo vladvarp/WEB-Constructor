@@ -31,9 +31,9 @@
 - project: id, name, created_at, updated_at.
 - site: title, description, language.
 - pages: id, title, slug, is_home, content.nodes.
-- assets: id, name, path, mime_type.
+- Каждый узел content.nodes имеет id, type, props и children; вложенность описывает структуру документа независимо от DOM.
+- assets: id, name, path, mime_type; пути ресурсов только относительные и без traversal-сегментов.
 - У проекта ровно одна главная страница; slug страниц уникальны.
-- Узлы content.nodes хранятся как JSON-объекты и не привязаны к DOM или конкретному редактору.
 
 ## API проектов
 - GET /api/projects — список.
