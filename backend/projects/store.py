@@ -53,7 +53,7 @@ class ProjectStore:
             raw = json.loads(path.read_text(encoding="utf-8"))
             migrated = migrate_project_data(raw)
             return ProjectDocument.model_validate(migrated)
-        except (json.JSONDecodeError, ValidationError, ValueError) as exc:
+        except (json.JSONDecodeError, ValidationError, ValueError, TypeError) as exc:
             logger.exception("Project file is invalid: %s", path)
             raise ValueError(f"Project data is invalid: {path.parent.name}") from exc
 
