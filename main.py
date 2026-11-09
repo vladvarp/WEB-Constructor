@@ -13,15 +13,25 @@ ERROR_ALREADY_EXISTS = 183
 
 
 def configure_startup_logging(log_file: Path = LOG_FILE) -> None:
-    """Initialize logging before importing any application dependencies."""
+    """Initialize application logging before importing third-party dependencies."""
+    log_file = log_file.resolve()
     log_file.parent.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(
-        filename=log_file,
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        encoding="utf-8",
-        force=True,
+
+    logger = logging.getLogger("web_constructor")
+    logger.setLevel(logging.INFO)
+    logger.propagate = True
+
+    handler_exists = any(
+        isinstance(handler, logging.FileHandler)
+        and Path(handler.baseFilename).resolve() == log_file
+        for handler in logger.handlers
     )
+    if not handler_exists:
+        handler = logging.FileHandler(log_file, encoding="utf-8")
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        ))
+        logger.addHandler(handler)
 
 
 def is_existing_instance(error_code: int) -> bool:
@@ -76,11 +86,11 @@ def show_startup_error(message: str) -> None:
 
 def main() -> None:
     mutex_state: tuple[Any, Any] | None = None
+    logger = logging.getLogger("web_constructor.startup")
 
     try:
-        # Logging must be ready before mutex creation and all third-party imports.
+        # Logging is ready before mutex creation and all application imports.
         configure_startup_logging()
-        logger = logging.getLogger("web_constructor.startup")
         logger.info("Application launcher entered")
 
         mutex_state, is_first_instance = acquire_single_instance()
@@ -95,7 +105,7 @@ def main() -> None:
         run_application()
 
     except Exception:
-        logging.exception("Fatal application startup/runtime error")
+        logger.exception("Fatal application startup/runtime error")
         show_startup_error(
             "WEB-Constructor не удалось запустить.\n\n"
             "Подробности записаны в файл:\n"
@@ -111,7 +121,7 @@ def main() -> None:
                 kernel32.CloseHandle.restype = wintypes.BOOL
                 kernel32.CloseHandle(handle)
             except Exception:
-                logging.exception("Failed to release the single-instance handle")
+                logger.exception("Failed to release the single-instance handle")
 
 
 if __name__ == "__main__":
