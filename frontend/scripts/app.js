@@ -12,6 +12,7 @@ import {
   setHomePage,
   updatePage,
 } from "./api.js";
+import { mountVisualEditor } from "./editor.js";
 import {
   renderPages,
   renderProjectCards,
@@ -57,6 +58,7 @@ async function refreshProjects() {
 
 function showProjects() {
   activeProject = null;
+  document.querySelector("#visual-editor-host").hidden = true;
   projectView.hidden = true;
   projectsView.hidden = false;
 }
@@ -68,8 +70,26 @@ function renderActivePages() {
     onSetHome: handleSetHomePage,
     onDelete: handleDeletePage,
     onMove: handleMovePage,
+    onOpenEditor: openVisualEditor,
   });
   renderNavigation(activeProject.menus || [], activeProject.pages, selectedMenuId);
+}
+
+function openVisualEditor(pageId) {
+  if (!activeProject) return;
+  projectView.hidden = true;
+  const host = document.querySelector("#visual-editor-host");
+  host.hidden = false;
+  mountVisualEditor(host, activeProject, pageId, async (updatedProject) => {
+    activeProject = updatedProject;
+    await refreshProjects();
+    showToast("Страница сохранена");
+  }, () => {
+    host.hidden = true;
+    host.replaceChildren();
+    projectView.hidden = false;
+    renderActivePages();
+  });
 }
 
 async function openProject(projectId) {
@@ -296,6 +316,7 @@ createForm.addEventListener("submit", handleCreateProject);
 document.querySelector("#back-to-projects").addEventListener("click", showProjects);
 document.querySelector("#save-project-button").addEventListener("click", handleSaveProject);
 document.querySelector("#delete-project-button").addEventListener("click", handleDeleteProject);
+document.querySelector("#open-visual-editor").addEventListener("click", () => openVisualEditor(activeProject?.pages.find((page) => page.is_home)?.id));
 
 document.querySelector("#add-page-button").addEventListener("click", () => {
   createPageDialog.showModal();
