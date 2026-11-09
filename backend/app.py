@@ -124,11 +124,6 @@ def delete_page(project_id: UUID, page_id: UUID) -> dict[str, Any]:
     return _page_operation(lambda: project_store.delete_page(project_id, page_id))
 
 
-@app.put("/api/projects/{project_id}/pages/order")
-def reorder_pages(project_id: UUID, payload: PageOrderRequest) -> dict[str, Any]:
-    return _page_operation(lambda: project_store.reorder_pages(project_id, payload.page_ids))
-
-
 @app.delete("/api/projects/{project_id}", status_code=204)
 def delete_project(project_id: UUID) -> None:
     try:
