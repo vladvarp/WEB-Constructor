@@ -15,6 +15,8 @@
 2. `.venv\\Scripts\\python.exe -m pip install -r requirements.txt`
 3. Запустить `launch.vbs`.
 
+При запуске `launch.vbs` сначала использует Python из `.venv`, затем ищет `pythonw.exe` в системном `PATH`. Если Python не найден, приложение покажет инструкцию по установке.
+
 Для диагностики: `py -3 main.py`. Журнал: `logs/application.log`.
 
 ## Принципы
