@@ -28,6 +28,8 @@ def _migrate_v0_to_v1(data: dict[str, Any]) -> dict[str, Any]:
     site.setdefault("language", "ru")
 
     pages = migrated.setdefault("pages", [])
+    if not isinstance(pages, list):
+        raise ValueError("Legacy pages must be an array")
     if not pages:
         pages.append({
             "id": str(uuid4()),
@@ -36,7 +38,9 @@ def _migrate_v0_to_v1(data: dict[str, Any]) -> dict[str, Any]:
             "is_home": True,
             "content": {"nodes": []},
         })
-    migrated.setdefault("assets", [])
+    assets = migrated.setdefault("assets", [])
+    if not isinstance(assets, list):
+        raise ValueError("Legacy assets must be an array")
     migrated["schema_version"] = 1
     return migrated
 
