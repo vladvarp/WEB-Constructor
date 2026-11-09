@@ -60,3 +60,15 @@
   .page-row-actions { width:100%; margin-left:0; justify-content:flex-start; }
   .pages-heading { align-items:flex-start; flex-direction:column; }
 }
+
+.navigation-card { margin-top:24px; }
+.navigation-menu-fields,.navigation-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.navigation-items-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:22px 0 12px; color:var(--color-text); font-size:12px; }
+.navigation-item-list { display:grid; gap:7px; }
+.navigation-item-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 11px; border:1px solid var(--color-border); border-radius:7px; background:rgba(17,25,35,.7); color:var(--color-text); font-size:11px; }
+.navigation-item-row>span { min-width:0; overflow-wrap:anywhere; }
+.navigation-item-actions { display:flex; gap:4px; flex-shrink:0; }
+.navigation-item-form { margin-top:18px; padding:16px; border:1px solid var(--color-border); border-radius:9px; background:rgba(17,25,35,.45); }
+.navigation-item-form .dialog-actions { margin-top:16px; }
+#save-navigation-menu { margin-top:18px; }
+@media (max-width:760px) { .navigation-menu-fields,.navigation-form-grid { grid-template-columns:1fr; } }

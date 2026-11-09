@@ -47,7 +47,15 @@ def _migrate_v0_to_v1(data: dict[str, Any]) -> dict[str, Any]:
 
 MIGRATIONS = {
     0: _migrate_v0_to_v1,
+    1: _migrate_v1_to_v2,
 }
+
+
+def _migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
+    migrated = deepcopy(data)
+    migrated.setdefault("menus", [])
+    migrated["schema_version"] = 2
+    return migrated
 
 
 def migrate_project_data(data: dict[str, Any]) -> dict[str, Any]:

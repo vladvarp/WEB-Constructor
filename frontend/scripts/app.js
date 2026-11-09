@@ -1,5 +1,8 @@
 import {
   createPage,
+  createNavigationMenu,
+  deleteNavigationMenu,
+  updateNavigationMenu,
   createProject,
   deletePage,
   deleteProject,
@@ -23,6 +26,7 @@ import {
 
 let activeProject = null;
 let projectCache = [];
+let selectedMenuId = null;
 
 const projectsView = document.querySelector("#projects-view");
 const projectView = document.querySelector("#project-view");
@@ -68,12 +72,14 @@ function renderActivePages() {
     onDelete: handleDeletePage,
     onMove: handleMovePage,
   });
+  renderNavigation(activeProject.menus || [], activeProject.pages, selectedMenuId);
 }
 
 async function openProject(projectId) {
   try {
     const result = await getProject(projectId);
     activeProject = result.project;
+    selectedMenuId = activeProject.menus?.[0]?.id || null;
     projectsView.hidden = true;
     projectView.hidden = false;
     document.querySelector("#project-heading").textContent = activeProject.project.name;
@@ -235,6 +241,54 @@ async function handleMovePage(pageId, offset) {
   }
 }
 
+
+async function navigationRequest(path, options = {}) {
+  const response = await fetch(path,{...options,headers:{"Content-Type":"application/json",Accept:"application/json"}});
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || `Ошибка API: ${response.status}`);
+  return data;
+}
+function navPath(projectId) { return `/api/projects/${encodeURIComponent(projectId)}/menus`; }
+function renderNavigation(menus,pages,selectedId) {
+  const select=document.querySelector("#navigation-menu-select"), editor=document.querySelector("#navigation-editor");
+  const list=document.querySelector("#navigation-item-list"), pageSelect=document.querySelector("#navigation-page-target");
+  const parentSelect=document.querySelector("#navigation-parent-target"); select.replaceChildren();
+  menus.forEach(menu=>{const o=document.createElement("option");o.value=menu.id;o.textContent=menu.name;select.append(o);});
+  if(!menus.length){editor.hidden=true;return;}
+  select.value=selectedId||menus[0].id; const menu=menus.find(m=>m.id===select.value)||menus[0]; editor.hidden=false;
+  document.querySelector("#navigation-menu-name").value=menu.name;
+  document.querySelector("#navigation-menu-location").value=menu.location;
+  pageSelect.replaceChildren(); pages.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=p.title;pageSelect.append(o);});
+  parentSelect.replaceChildren();const root=document.createElement("option");root.value="";root.textContent="Верхний уровень";parentSelect.append(root);list.replaceChildren();
+  const draw=(items,depth=0)=>items.forEach((item,index)=>{
+    const row=document.createElement("div");row.className="navigation-item-row";row.style.marginLeft=`${depth*20}px`;
+    const label=document.createElement("span");label.textContent=`${item.label} · ${item.kind==="page"?(pages.find(p=>p.id===item.page_id)?.title||"Страница"):item.url}`;
+    const actions=document.createElement("div");actions.className="navigation-item-actions";
+    const btn=(txt,title,fn,disabled=false)=>{const b=document.createElement("button");b.type="button";b.className="button button-quiet button-small";b.textContent=txt;b.title=title;b.disabled=disabled;b.addEventListener("click",fn);actions.append(b);};
+    btn("↑","Выше",()=>moveNavigation(item.id,-1),index===0);btn("↓","Ниже",()=>moveNavigation(item.id,1),index===items.length-1);
+    btn("Изм.","Изменить название",()=>editNavigationItem(item.id));btn("×","Удалить",()=>removeNavigationItem(item.id));
+    row.append(label,actions);list.append(row);
+    const parent=document.createElement("option");parent.value=item.id;parent.textContent=`${"　".repeat(depth)}${item.label}`;parentSelect.append(parent);draw(item.children||[],depth+1);
+  }); draw(menu.items);
+}
+function findNav(items,id){for(const item of items){if(item.id===id)return item;const found=findNav(item.children||[],id);if(found)return found;}return null;}
+function removeNav(items,id){return items.filter(i=>i.id!==id).map(i=>({...i,children:removeNav(i.children||[],id)}));}
+function moveNav(items,id,offset){const index=items.findIndex(i=>i.id===id);if(index>=0){const target=index+offset;if(target>=0&&target<items.length)[items[index],items[target]]=[items[target],items[index]];return true;}return items.some(i=>moveNav(i.children||[],id,offset));}
+async function saveNav(menu){
+  try{const r=await navigationRequest(`${navPath(activeProject.project.id)}/${menu.id}`,{method:"PUT",body:JSON.stringify({name:menu.name,location:menu.location,items:menu.items})});activeProject=r.project;renderActivePages();await refreshProjects();showToast("Меню сохранено");}
+  catch(e){showToast(e.message,true);}
+}
+async function removeNavigationItem(id){const menu=activeProject.menus.find(m=>m.id===selectedMenuId);if(menu)await saveNav({...menu,items:removeNav(menu.items,id)});}
+async function moveNavigation(id,offset){const menu=activeProject.menus.find(m=>m.id===selectedMenuId);if(!menu)return;const items=structuredClone(menu.items);if(moveNav(items,id,offset))await saveNav({...menu,items});}
+async function editNavigationItem(id){const menu=activeProject.menus.find(m=>m.id===selectedMenuId),item=menu&&findNav(menu.items,id);if(!item)return;const label=prompt("Название пункта:",item.label);if(label===null||!label.trim())return;const items=structuredClone(menu.items);findNav(items,id).label=label.trim();await saveNav({...menu,items});}
+async function addNavigationMenu(){const name=prompt("Название меню:","Основное меню");if(name===null||!name.trim())return;try{const r=await navigationRequest(navPath(activeProject.project.id),{method:"POST",body:JSON.stringify({name:name.trim(),location:"header"})});activeProject=r.project;selectedMenuId=activeProject.menus.at(-1).id;renderActivePages();await refreshProjects();showToast("Меню создано");}catch(e){showToast(e.message,true);}}
+async function saveNavigationSettings(){const menu=activeProject.menus.find(m=>m.id===selectedMenuId);if(menu)await saveNav({...menu,name:document.querySelector("#navigation-menu-name").value.trim(),location:document.querySelector("#navigation-menu-location").value});}
+async function addNavigationItem(event){event.preventDefault();const menu=activeProject.menus.find(m=>m.id===selectedMenuId);if(!menu)return;const kind=document.querySelector("#navigation-item-kind").value;
+  const item={id:crypto.randomUUID(),label:document.querySelector("#navigation-item-label").value.trim(),kind,page_id:kind==="page"?document.querySelector("#navigation-page-target").value:null,url:kind==="external"?document.querySelector("#navigation-url-target").value.trim():null,children:[]};
+  const items=structuredClone(menu.items),parentId=document.querySelector("#navigation-parent-target").value;if(parentId){const parent=findNav(items,parentId);if(!parent)return;parent.children.push(item);}else items.push(item);
+  await saveNav({...menu,items});document.querySelector("#navigation-item-form").reset();document.querySelector("#navigation-page-target-wrap").hidden=false;document.querySelector("#navigation-url-target-wrap").hidden=true;}
+async function deleteNavigationMenuHandler(){const menu=activeProject.menus.find(m=>m.id===selectedMenuId);if(!menu||!confirm(`Удалить меню «${menu.name}»?`))return;try{const r=await navigationRequest(`${navPath(activeProject.project.id)}/${menu.id}`,{method:"DELETE"});activeProject=r.project;selectedMenuId=activeProject.menus[0]?.id||null;renderActivePages();await refreshProjects();showToast("Меню удалено");}catch(e){showToast(e.message,true);}}
+
 document.querySelector("#create-project-button").addEventListener("click", () => {
   createDialog.showModal();
   document.querySelector("#new-project-name").focus();
@@ -264,6 +318,13 @@ createPageDialog.addEventListener("close", () => {
   createPageForm.reset();
   document.querySelector("#new-page-slug").dataset.edited = "";
 });
+
+document.querySelector("#add-navigation-menu").addEventListener("click",addNavigationMenu);
+document.querySelector("#navigation-menu-select").addEventListener("change",e=>{selectedMenuId=e.target.value;renderActivePages();});
+document.querySelector("#navigation-item-kind").addEventListener("change",e=>{const ext=e.target.value==="external";document.querySelector("#navigation-page-target-wrap").hidden=ext;document.querySelector("#navigation-url-target-wrap").hidden=!ext;});
+document.querySelector("#navigation-item-form").addEventListener("submit",addNavigationItem);
+document.querySelector("#save-navigation-menu").addEventListener("click",saveNavigationSettings);
+document.querySelector("#delete-navigation-menu").addEventListener("click",deleteNavigationMenuHandler);
 
 async function initialize() {
   try {

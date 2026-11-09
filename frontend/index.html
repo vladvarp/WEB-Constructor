@@ -72,6 +72,32 @@
             <div id="page-list" class="page-list"></div>
             <p class="muted-note">Содержимое страниц пока не редактируется. На этом этапе доступны структура, адреса и главная страница.</p>
           </div>
+
+          <section class="settings-card navigation-card">
+            <div class="pages-heading"><div class="card-heading">Меню и навигация</div><button class="button button-primary" id="add-navigation-menu" type="button">＋ Создать меню</button></div>
+            <label class="field-label" for="navigation-menu-select">Меню проекта</label><select class="text-field" id="navigation-menu-select"></select>
+            <div id="navigation-editor" hidden>
+              <div class="navigation-menu-fields">
+                <div><label class="field-label" for="navigation-menu-name">Название меню</label><input class="text-field" id="navigation-menu-name" maxlength="80"></div>
+                <div><label class="field-label" for="navigation-menu-location">Размещение</label><select class="text-field" id="navigation-menu-location"><option value="header">Шапка сайта</option><option value="footer">Подвал</option><option value="sidebar">Боковая панель</option><option value="primary">Основное</option><option value="secondary">Дополнительное</option></select></div>
+              </div>
+              <div class="navigation-items-heading"><strong>Пункты меню</strong><button class="button button-secondary button-small" id="delete-navigation-menu" type="button">Удалить меню</button></div>
+              <div id="navigation-item-list" class="navigation-item-list"></div>
+              <form id="navigation-item-form" class="navigation-item-form">
+                <div class="navigation-form-grid">
+                  <div><label class="field-label" for="navigation-item-label">Название пункта</label><input class="text-field" id="navigation-item-label" maxlength="120" required></div>
+                  <div><label class="field-label" for="navigation-item-kind">Тип ссылки</label><select class="text-field" id="navigation-item-kind"><option value="page">Страница проекта</option><option value="external">Внешняя ссылка</option></select></div>
+                </div>
+                <div id="navigation-page-target-wrap"><label class="field-label" for="navigation-page-target">Страница</label><select class="text-field" id="navigation-page-target"></select></div>
+                <div id="navigation-url-target-wrap" hidden><label class="field-label" for="navigation-url-target">Адрес (HTTP/HTTPS)</label><input class="text-field" id="navigation-url-target" type="url" placeholder="https://example.com"></div>
+                <label class="field-label" for="navigation-parent-target">Вложить в пункт</label><select class="text-field" id="navigation-parent-target"><option value="">Верхний уровень</option></select>
+                <div class="dialog-actions"><button class="button button-primary" type="submit">Добавить пункт</button></div>
+              </form>
+              <p class="muted-note">Вложенность до пяти уровней. Внутренние ссылки привязаны к UUID страниц.</p>
+              <button class="button button-primary" id="save-navigation-menu" type="button">Сохранить меню</button>
+            </div>
+            <p class="muted-note">Меню сохраняются в модели проекта. Отображение на опубликованном сайте появится на этапе экспортёра.</p>
+          </section>
         </section>
       </section>
 
@@ -80,7 +106,7 @@
         <div class="system-row"><span>Локальный сервер</span><strong id="server-state">Проверка</strong></div>
         <div class="system-row"><span>Модульная система</span><strong id="module-count">Загрузка</strong></div>
         <div class="system-row"><span>Проекты</span><strong id="project-count">Загрузка</strong></div>
-        <div class="system-row"><span>Формат модели</span><strong>v1</strong></div>
+        <div class="system-row"><span>Формат модели</span><strong>v2</strong></div>
         <div class="panel-note">Проекты хранятся отдельно от файлов приложения. Данные сохраняются в версионируемом формате JSON.</div>
       </aside>
     </main>
@@ -119,7 +145,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <footer class="footer"><span>WEB-Constructor</span><span>Project management · 0.3.0</span></footer>
+    <footer class="footer"><span>WEB-Constructor</span><span>Navigation system · 0.4.0</span></footer>
   </div>
   <script type="module" src="/scripts/app.js"></script>
 </body>
