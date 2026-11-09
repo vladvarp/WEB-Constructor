@@ -261,6 +261,7 @@ document.querySelector("#new-page-slug").addEventListener("input", (event) => {
   event.target.dataset.edited = "true";
 });
 createPageDialog.addEventListener("close", () => {
+  createPageForm.reset();
   document.querySelector("#new-page-slug").dataset.edited = "";
 });
 
