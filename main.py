@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
+import importlib.util
 import logging
 import os
+import re
+import subprocess
+import sys
+import venv
 from pathlib import Path
 from typing import Any
 
@@ -10,10 +16,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 LOG_FILE = PROJECT_ROOT / "logs" / "application.log"
 MUTEX_NAME = "Local\\WEBConstructor.Application"
 ERROR_ALREADY_EXISTS = 183
+REQUIREMENTS_MARKER = ".requirements.sha256"
+
+# Distribution names that do not match their import package names.
+IMPORT_NAME_OVERRIDES = {
+    "pywebview": "webview",
+}
 
 
 def configure_startup_logging(log_file: Path = LOG_FILE) -> None:
-    """Initialize application logging before importing third-party dependencies."""
+    """Initialize application logging before environment setup and imports."""
     log_file = log_file.resolve()
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -31,6 +43,137 @@ def configure_startup_logging(log_file: Path = LOG_FILE) -> None:
             "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
         ))
         logger.addHandler(handler)
+
+
+def get_venv_python(venv_dir: Path) -> Path:
+    """Return the virtual environment interpreter for the current platform."""
+    if os.name == "nt":
+        return venv_dir / "Scripts" / "python.exe"
+    return venv_dir / "bin" / "python"
+
+
+def get_venv_gui_python(venv_dir: Path) -> Path:
+    """Return pythonw.exe on Windows, or the regular interpreter elsewhere."""
+    if os.name == "nt":
+        return venv_dir / "Scripts" / "pythonw.exe"
+    return get_venv_python(venv_dir)
+
+
+def _requirements_imports_available(requirements_file: Path) -> bool:
+    """Check that each declared runtime distribution has an importable module."""
+    for raw_line in requirements_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith(("-", "git+", "http:")):
+            continue
+
+        match = re.match(r"([A-Za-z0-9_.-]+)", line)
+        if not match:
+            continue
+        distribution = match.group(1).lower().replace("_", "-")
+        module = IMPORT_NAME_OVERRIDES.get(
+            distribution, distribution.replace("-", "_")
+        )
+        try:
+            if importlib.util.find_spec(module) is None:
+                return False
+        except (ImportError, ValueError):
+            return False
+    return True
+
+
+def prepare_virtual_environment(
+    project_root: Path = PROJECT_ROOT,
+    current_executable: Path | None = None,
+) -> tuple[Path, bool]:
+    """
+    Create the project venv and install requirements when needed.
+
+    Returns (venv_interpreter, should_relaunch). The requirements hash avoids
+    running pip on every normal application start.
+    """
+    project_root = project_root.resolve()
+    requirements_file = project_root / "requirements.txt"
+    if not requirements_file.is_file():
+        raise FileNotFoundError(f"Не найден файл зависимостей: {requirements_file}")
+
+    venv_dir = project_root / ".venv"
+    interpreter = get_venv_python(venv_dir)
+    gui_interpreter = get_venv_gui_python(venv_dir)
+    marker = venv_dir / REQUIREMENTS_MARKER
+
+    if not interpreter.is_file():
+        logging.getLogger("web_constructor.startup").info(
+            "Creating virtual environment at %s", venv_dir
+        )
+        venv.EnvBuilder(with_pip=True).create(venv_dir)
+
+    requirements_hash = hashlib.sha256(
+        requirements_file.read_bytes()
+    ).hexdigest()
+    installed_hash = marker.read_text(encoding="ascii").strip() if marker.is_file() else ""
+
+    if (
+        installed_hash != requirements_hash
+        or not _requirements_imports_available(requirements_file)
+    ):
+        logger = logging.getLogger("web_constructor.startup")
+        logger.info("Installing or updating application dependencies")
+        result = subprocess.run(
+            [
+                str(interpreter),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "-r",
+                str(requirements_file),
+            ],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.stdout:
+            logger.info("Dependency installer output:\n%s", result.stdout.strip())
+        if result.stderr:
+            logger.info("Dependency installer diagnostics:\n%s", result.stderr.strip())
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Не удалось установить зависимости. "
+                "Проверьте подключение к интернету и файл logs/application.log."
+            )
+
+        marker.write_text(requirements_hash, encoding="ascii")
+        logger.info("Application dependencies are ready")
+    else:
+        logging.getLogger("web_constructor.startup").info(
+            "Virtual environment and dependencies are up to date"
+        )
+
+    current = (current_executable or Path(sys.executable)).resolve()
+    should_relaunch = Path(sys.prefix).resolve() != venv_dir.resolve()
+    if not gui_interpreter.is_file():
+        raise FileNotFoundError(
+            f"Не найден интерпретатор виртуального окружения: {gui_interpreter}"
+        )
+    return gui_interpreter, should_relaunch
+
+
+def relaunch_in_virtual_environment(interpreter: Path) -> None:
+    """Start the application with the project interpreter and exit this process."""
+    command = [str(interpreter), str(Path(__file__).resolve())]
+    creation_flags = 0
+    if os.name == "nt":
+        creation_flags = (
+            getattr(subprocess, "DETACHED_PROCESS", 0)
+            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        )
+    subprocess.Popen(
+        command,
+        cwd=str(PROJECT_ROOT),
+        close_fds=True,
+        creationflags=creation_flags,
+    )
 
 
 def is_existing_instance(error_code: int) -> bool:
@@ -88,9 +231,14 @@ def main() -> None:
     logger = logging.getLogger("web_constructor.startup")
 
     try:
-        # Logging is ready before mutex creation and all application imports.
         configure_startup_logging()
         logger.info("Application launcher entered")
+
+        interpreter, should_relaunch = prepare_virtual_environment()
+        if should_relaunch:
+            logger.info("Restarting application with project virtual environment")
+            relaunch_in_virtual_environment(interpreter)
+            return
 
         mutex_state, is_first_instance = acquire_single_instance()
         if not is_first_instance:
@@ -106,7 +254,7 @@ def main() -> None:
     except Exception:
         logger.exception("Fatal application startup/runtime error")
         show_startup_error(
-            "WEB-Constructor не удалось запустить.\n\n"
+            "WEB-Constructor не удалось подготовить или запустить.\n\n"
             "Подробности записаны в файл:\n"
             "logs\\application.log"
         )
