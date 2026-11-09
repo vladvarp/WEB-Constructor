@@ -17,9 +17,8 @@ def configure_startup_logging(log_file: Path = LOG_FILE) -> None:
     log_file = log_file.resolve()
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    logger = logging.getLogger("web_constructor")
+    logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    logger.propagate = True
 
     handler_exists = any(
         isinstance(handler, logging.FileHandler)
