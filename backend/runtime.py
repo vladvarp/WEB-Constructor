@@ -16,9 +16,12 @@ from backend.core.config import APP_NAME, HOST, LOGS_DIR, STARTUP_TIMEOUT_SECOND
 
 def configure_logging() -> None:
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename=LOGS_DIR / "application.log", level=logging.INFO,
-                        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                        encoding="utf-8")
+    logging.basicConfig(
+        filename=LOGS_DIR / "application.log",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        encoding="utf-8",
+    )
 
 
 def find_available_port() -> int:
@@ -44,20 +47,44 @@ def wait_for_backend(port: int, timeout: float) -> None:
 def run_application() -> None:
     configure_logging()
     logger = logging.getLogger("web_constructor.runtime")
-    server = server_thread = None
+    server = None
+    server_thread = None
+
     try:
+        logger.info("Starting local API server")
         port = find_available_port()
-        server = uvicorn.Server(uvicorn.Config(
-            app, host=HOST, port=port, log_level="warning",
-            access_log=False, lifespan="off"
-        ))
-        server_thread = threading.Thread(target=server.run,
-                                         name="web-constructor-api", daemon=True)
+        server = uvicorn.Server(
+            uvicorn.Config(
+                app,
+                host=HOST,
+                port=port,
+                log_level="info",
+                access_log=False,
+                lifespan="off",
+            )
+        )
+        server_thread = threading.Thread(
+            target=server.run,
+            name="web-constructor-api",
+            daemon=True,
+        )
         server_thread.start()
+
+        logger.info("Waiting for API readiness on %s:%s", HOST, port)
         wait_for_backend(port, STARTUP_TIMEOUT_SECONDS)
-        webview.create_window(APP_NAME, f"http://{HOST}:{port}/",
-                              width=1440, height=900, min_size=(1000, 650))
-        webview.start(debug=False)
+        logger.info("API is ready; creating application window")
+
+        webview.create_window(
+            APP_NAME,
+            f"http://{HOST}:{port}/",
+            width=1440,
+            height=900,
+            min_size=(1000, 650),
+        )
+        # Select WebView2 explicitly instead of relying on backend auto-detection.
+        webview.start(debug=False, gui="edgechromium")
+        logger.info("Application window closed normally")
+
     except Exception:
         logger.exception("Application startup or runtime failed")
         raise
@@ -66,3 +93,4 @@ def run_application() -> None:
             server.should_exit = True
         if server_thread is not None and server_thread.is_alive():
             server_thread.join(timeout=5)
+        logger.info("Application shutdown complete")
