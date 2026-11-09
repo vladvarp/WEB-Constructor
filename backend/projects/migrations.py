@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from backend.projects.models import CURRENT_SCHEMA_VERSION
 
@@ -9,9 +11,33 @@ from backend.projects.models import CURRENT_SCHEMA_VERSION
 def _migrate_v0_to_v1(data: dict[str, Any]) -> dict[str, Any]:
     """Upgrade the initial unversioned draft format to the first stable model."""
     migrated = deepcopy(data)
-    migrated["schema_version"] = 1
+    now = datetime.now(timezone.utc).isoformat()
+    project = migrated.setdefault("project", {})
+    if not isinstance(project, dict):
+        raise ValueError("Legacy project metadata must be an object")
+    project.setdefault("id", str(uuid4()))
+    project.setdefault("name", migrated.get("name") or "Новый проект")
+    project.setdefault("created_at", now)
+    project.setdefault("updated_at", project["created_at"])
+
+    site = migrated.setdefault("site", {})
+    if not isinstance(site, dict):
+        raise ValueError("Legacy site settings must be an object")
+    site.setdefault("title", project["name"])
+    site.setdefault("description", "")
+    site.setdefault("language", "ru")
+
+    pages = migrated.setdefault("pages", [])
+    if not pages:
+        pages.append({
+            "id": str(uuid4()),
+            "title": "Главная",
+            "slug": "index",
+            "is_home": True,
+            "content": {"nodes": []},
+        })
     migrated.setdefault("assets", [])
-    migrated.setdefault("pages", [])
+    migrated["schema_version"] = 1
     return migrated
 
 
