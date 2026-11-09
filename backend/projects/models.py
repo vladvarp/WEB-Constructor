@@ -193,7 +193,8 @@ class ProjectDocument(StrictModel):
                 item_ids.add(item.id)
                 if item.kind == "page" and item.page_id not in page_ids:
                     raise ValueError("Navigation item references a page that does not exist")
-                inspect_items(item.children, depth + 1)
+                if item.children:
+                    inspect_items(item.children, depth + 1)
         for menu in self.menus:
             inspect_items(menu.items)
         return self
