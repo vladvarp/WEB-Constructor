@@ -107,6 +107,7 @@ async function openProject(projectId) {
     document.querySelector("#project-meta").textContent =
       `Создан: ${new Date(activeProject.project.created_at).toLocaleString("ru-RU")} · ID: ${activeProject.project.id}`;
     renderActivePages();
+    openVisualEditor(activeProject.pages.find((page) => page.is_home)?.id);
   } catch (error) {
     showToast(error.message, true);
   }
