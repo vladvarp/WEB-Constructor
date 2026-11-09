@@ -1,0 +1,7 @@
+{
+  "id": "example.module",
+  "name": "Пример модуля",
+  "version": "0.1.0",
+  "enabled": false,
+  "dependencies": []
+}
