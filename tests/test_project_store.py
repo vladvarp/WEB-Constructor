@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from backend.projects.migrations import migrate_project_data
+from backend.projects.models import ProjectAsset
 from backend.projects.store import ProjectNotFoundError, ProjectStore
 
 
@@ -113,3 +114,20 @@ def test_migration_upgrades_unversioned_project_document() -> None:
 def test_migration_rejects_newer_schema() -> None:
     with pytest.raises(ValueError, match="newer than supported"):
         migrate_project_data({"schema_version": 99})
+
+
+def test_asset_path_rejects_traversal_and_normalizes_separators() -> None:
+    with pytest.raises(ValueError, match="safe relative path"):
+        ProjectAsset(
+            id=uuid4(),
+            name="outside",
+            path="../outside.txt",
+        )
+
+    asset = ProjectAsset(
+        id=uuid4(),
+        name="logo",
+        path="images\\\\logo.svg",
+    )
+
+    assert asset.path == "images/logo.svg"
