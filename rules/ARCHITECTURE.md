@@ -26,16 +26,19 @@
 - Внутри: project.json, assets/, exports/.
 - project.json — единственный источник истины для метаданных сайта и дерева страниц.
 
-## Project Model v1
+## Project Model v2
 - schema_version.
 - project: id, name, created_at, updated_at.
 - site: title, description, language.
 - pages: id, title, slug, is_home, content.nodes.
 - Каждый узел content.nodes имеет id, type, props и children; вложенность описывает структуру документа независимо от DOM.
 - assets: id, name, path, mime_type; пути ресурсов только относительные и без traversal-сегментов.
+- menus: id, name, location, items; каждый пункт имеет UUID, label, kind, page_id/url и children.
+- Внутренние ссылки используют UUID страницы; внешние ссылки — только абсолютные HTTP/HTTPS URL без credentials.
+- Вложенность навигации ограничена пятью уровнями и 500 пунктами на проект; идентификаторы пунктов уникальны, page_id должен ссылаться на существующую страницу.
 - У проекта хотя бы одна страница и ровно одна главная; slug и page id уникальны.
 
-## API проектов и страниц
+## API проектов, страниц и меню
 - GET /api/projects — список.
 - POST /api/projects — создание.
 - GET /api/projects/{id} — открытие.
@@ -44,8 +47,11 @@
 - POST /api/projects/{id}/pages — создание страницы.
 - PUT /api/projects/{id}/pages/{page_id} — изменение названия и slug.
 - POST /api/projects/{id}/pages/{page_id}/home — назначение главной.
-- DELETE /api/projects/{id}/pages/{page_id} — удаление; при удалении главной первая оставшаяся становится главной.
-- PUT /api/projects/{id}/pages/reorder — изменение порядка с обязательным полным списком UUID страниц.
+- DELETE /api/projects/{id}/pages/{page_id} — удаление страницы; при удалении главной первая оставшаяся становится главной.
+- PUT /api/projects/{id}/pages/reorder — изменение порядка страниц.
+- POST /api/projects/{id}/menus — создание меню.
+- PUT /api/projects/{id}/menus/{menu_id} — сохранение меню и дерева пунктов.
+- DELETE /api/projects/{id}/menus/{menu_id} — удаление меню.
 
 ## Запуск
 launch.vbs → pythonw.exe → main.py → проверка/создание .venv и зависимостей → FastAPI/Uvicorn → окно pywebview.
