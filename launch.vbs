@@ -12,7 +12,8 @@ shell.CurrentDirectory = projectDir
 ' Сначала используем Python из виртуального окружения проекта.
 pythonwPath = projectDir & "\.venv\Scripts\pythonw.exe"
 
-' Если виртуальное окружение ещё не создано, ищем pythonw.exe в PATH.
+' При первом запуске используем системный Python: main.py создаст .venv
+' и автоматически установит зависимости.
 If Not fso.FileExists(pythonwPath) Then
     pythonwPath = ""
     pathValue = shell.ExpandEnvironmentStrings("%PATH%")
@@ -31,9 +32,8 @@ End If
 
 If Len(pythonwPath) = 0 Then
     MsgBox "Не найден Python (pythonw.exe)." & vbCrLf & vbCrLf & _
-           "Сначала создайте виртуальное окружение и установите зависимости:" & vbCrLf & _
-           "py -3 -m venv .venv" & vbCrLf & _
-           ".venv\Scripts\python.exe -m pip install -r requirements.txt", _
+           "Установите Python 3.11 или новее, добавьте его в PATH и запустите этот файл снова." & vbCrLf & _
+           "Виртуальное окружение и библиотеки приложение подготовит автоматически.", _
            vbCritical, "WEB-Constructor — запуск невозможен"
 Else
     command = """" & pythonwPath & """ """ & projectDir & "\main.py"""
