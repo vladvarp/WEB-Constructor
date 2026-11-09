@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from backend.core.config import FRONTEND_DIR, MODULES_DIR, PROJECTS_DIR
 from backend.core.module_registry import ModuleRegistry
-from backend.projects.store import PageNotFoundError, ProjectNotFoundError, ProjectStore
+from backend.projects.store import NavigationMenuNotFoundError, PageNotFoundError, ProjectNotFoundError, ProjectStore
 
 module_registry = ModuleRegistry(MODULES_DIR)
 module_registry.discover()
@@ -39,8 +39,28 @@ class PageOrderRequest(BaseModel):
     page_ids: list[UUID] = Field(min_length=1)
 
 
+class NavigationMenuCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    location: str = Field(default="header", min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_-]*$")
+
+
+class NavigationMenuUpdateRequest(NavigationMenuCreateRequest):
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
 def _project_response(project: Any) -> dict[str, Any]:
     return {"project": project.model_dump(mode="json")}
+
+
+def _navigation_operation(operation: Any) -> dict[str, Any]:
+    try:
+        return _project_response(operation())
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    except NavigationMenuNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Navigation menu not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _page_operation(operation: Any) -> dict[str, Any]:
@@ -122,6 +142,24 @@ def set_home_page(project_id: UUID, page_id: UUID) -> dict[str, Any]:
 @app.delete("/api/projects/{project_id}/pages/{page_id}")
 def delete_page(project_id: UUID, page_id: UUID) -> dict[str, Any]:
     return _page_operation(lambda: project_store.delete_page(project_id, page_id))
+
+
+
+@app.post("/api/projects/{project_id}/menus", status_code=201)
+def create_navigation_menu(project_id: UUID, payload: NavigationMenuCreateRequest) -> dict[str, Any]:
+    return _navigation_operation(lambda: project_store.create_menu(project_id, payload.name, payload.location))
+
+
+@app.put("/api/projects/{project_id}/menus/{menu_id}")
+def update_navigation_menu(project_id: UUID, menu_id: UUID, payload: NavigationMenuUpdateRequest) -> dict[str, Any]:
+    return _navigation_operation(lambda: project_store.update_menu(
+        project_id, menu_id, payload.name, payload.location, payload.items
+    ))
+
+
+@app.delete("/api/projects/{project_id}/menus/{menu_id}")
+def delete_navigation_menu(project_id: UUID, menu_id: UUID) -> dict[str, Any]:
+    return _navigation_operation(lambda: project_store.delete_menu(project_id, menu_id))
 
 
 @app.delete("/api/projects/{project_id}", status_code=204)

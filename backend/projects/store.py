@@ -19,6 +19,8 @@ from backend.projects.models import (
     ProjectDocument,
     ProjectMetadata,
     ProjectPage,
+    NavigationItem,
+    NavigationMenu,
     SiteSettings,
 )
 
@@ -30,6 +32,10 @@ class ProjectNotFoundError(FileNotFoundError):
 
 
 class PageNotFoundError(LookupError):
+    pass
+
+
+class NavigationMenuNotFoundError(LookupError):
     pass
 
 
@@ -129,6 +135,7 @@ class ProjectStore:
                 )
             ],
             assets=[],
+            menus=[],
         )
 
         project_dir = self._project_dir(project_id)
@@ -214,8 +221,12 @@ class ProjectStore:
         pages = [page for page in document.pages if page.id != normalized_id]
         if not any(page.is_home for page in pages):
             pages[0] = pages[0].model_copy(update={"is_home": True})
+        def without_page(items: list[NavigationItem]) -> list[NavigationItem]:
+            return [item.model_copy(update={"children": without_page(item.children)})
+                    for item in items if not (item.kind == "page" and item.page_id == normalized_id)]
+        menus = [menu.model_copy(update={"items": without_page(menu.items)}) for menu in document.menus]
         candidate = ProjectDocument.model_validate(
-            document.model_copy(update={"pages": pages}).model_dump()
+            document.model_copy(update={"pages": pages, "menus": menus}).model_dump()
         )
         return self._save_document(project_id, candidate)
 
@@ -232,6 +243,33 @@ class ProjectStore:
                 update={"pages": [by_id[page_id] for page_id in page_ids]}
             ).model_dump()
         )
+        return self._save_document(project_id, candidate)
+
+
+    def create_menu(self, project_id: UUID | str, name: str, location: str = "header") -> ProjectDocument:
+        document = self._read(project_id)
+        menu = NavigationMenu(id=uuid4(), name=name, location=location, items=[])
+        candidate = ProjectDocument.model_validate(document.model_copy(update={"menus": [*document.menus, menu]}).model_dump())
+        return self._save_document(project_id, candidate)
+
+    def update_menu(self, project_id: UUID | str, menu_id: UUID | str, name: str,
+                    location: str, items: list[dict[str, Any]]) -> ProjectDocument:
+        document = self._read(project_id)
+        normalized_id = UUID(str(menu_id))
+        if not any(menu.id == normalized_id for menu in document.menus):
+            raise NavigationMenuNotFoundError("Navigation menu not found")
+        updated = NavigationMenu(id=normalized_id, name=name, location=location, items=items)
+        menus = [updated if menu.id == normalized_id else menu for menu in document.menus]
+        candidate = ProjectDocument.model_validate(document.model_copy(update={"menus": menus}).model_dump())
+        return self._save_document(project_id, candidate)
+
+    def delete_menu(self, project_id: UUID | str, menu_id: UUID | str) -> ProjectDocument:
+        document = self._read(project_id)
+        normalized_id = UUID(str(menu_id))
+        if not any(menu.id == normalized_id for menu in document.menus):
+            raise NavigationMenuNotFoundError("Navigation menu not found")
+        menus = [menu for menu in document.menus if menu.id != normalized_id]
+        candidate = ProjectDocument.model_validate(document.model_copy(update={"menus": menus}).model_dump())
         return self._save_document(project_id, candidate)
 
     def delete(self, project_id: UUID | str) -> None:

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 class StrictModel(BaseModel):
@@ -96,12 +97,66 @@ class ProjectAsset(StrictModel):
         return path.as_posix()
 
 
+class NavigationItem(StrictModel):
+    id: UUID
+    label: str = Field(min_length=1, max_length=120)
+    kind: Literal["page", "external"] = "page"
+    page_id: UUID | None = None
+    url: str | None = Field(default=None, max_length=2048)
+    children: list[NavigationItem] = Field(default_factory=list)
+
+    @field_validator("label")
+    @classmethod
+    def clean_label(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(ord(char) < 32 for char in value):
+            raise ValueError("Navigation label must be a non-empty plain text value")
+        return value
+
+    @field_validator("url")
+    @classmethod
+    def validate_external_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        parsed = urlsplit(value)
+        if (len(value) > 2048 or any(ord(char) < 32 for char in value)
+            or parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc
+            or not parsed.hostname or parsed.username is not None or parsed.password is not None):
+            raise ValueError("External navigation URLs must be absolute HTTP or HTTPS URLs")
+        return value
+
+    @model_validator(mode="after")
+    def validate_target(self) -> NavigationItem:
+        if self.kind == "page" and (self.page_id is None or self.url is not None):
+            raise ValueError("Page navigation items require page_id and cannot contain url")
+        if self.kind == "external" and (self.url is None or self.page_id is not None):
+            raise ValueError("External navigation items require url and cannot contain page_id")
+        return self
+
+
+class NavigationMenu(StrictModel):
+    id: UUID
+    name: str = Field(min_length=1, max_length=80)
+    location: str = Field(default="header", min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_-]*$")
+    items: list[NavigationItem] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(ord(char) < 32 for char in value):
+            raise ValueError("Navigation menu name cannot be empty")
+        return value
+
+
 class ProjectDocument(StrictModel):
     schema_version: int = Field(ge=1)
     project: ProjectMetadata
     site: SiteSettings
     pages: list[ProjectPage] = Field(default_factory=list, min_length=1)
     assets: list[ProjectAsset] = Field(default_factory=list)
+    menus: list[NavigationMenu] = Field(default_factory=list)
 
     @field_validator("pages")
     @classmethod
@@ -116,3 +171,30 @@ class ProjectDocument(StrictModel):
         if len(page_ids) != len(set(page_ids)):
             raise ValueError("Page identifiers must be unique")
         return pages
+
+    @model_validator(mode="after")
+    def validate_navigation(self) -> ProjectDocument:
+        menu_ids = [menu.id for menu in self.menus]
+        if len(menu_ids) != len(set(menu_ids)):
+            raise ValueError("Navigation menu identifiers must be unique")
+        page_ids = {page.id for page in self.pages}
+        item_ids: set[UUID] = set()
+        total_items = 0
+        def inspect_items(items: list[NavigationItem], depth: int = 1) -> None:
+            nonlocal total_items
+            if depth > 5:
+                raise ValueError("Navigation nesting cannot exceed five levels")
+            for item in items:
+                total_items += 1
+                if total_items > 500:
+                    raise ValueError("A project cannot contain more than 500 navigation items")
+                if item.id in item_ids:
+                    raise ValueError("Navigation item identifiers must be unique")
+                item_ids.add(item.id)
+                if item.kind == "page" and item.page_id not in page_ids:
+                    raise ValueError("Navigation item references a page that does not exist")
+                if item.children:
+                    inspect_items(item.children, depth + 1)
+        for menu in self.menus:
+            inspect_items(menu.items)
+        return self
