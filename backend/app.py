@@ -102,6 +102,11 @@ def create_page(project_id: UUID, payload: PageCreateRequest) -> dict[str, Any]:
     return _page_operation(lambda: project_store.create_page(project_id, payload.title, payload.slug))
 
 
+@app.put("/api/projects/{project_id}/pages/reorder")
+def reorder_pages(project_id: UUID, payload: PageOrderRequest) -> dict[str, Any]:
+    return _page_operation(lambda: project_store.reorder_pages(project_id, payload.page_ids))
+
+
 @app.put("/api/projects/{project_id}/pages/{page_id}")
 def update_page(project_id: UUID, page_id: UUID, payload: PageUpdateRequest) -> dict[str, Any]:
     return _page_operation(
