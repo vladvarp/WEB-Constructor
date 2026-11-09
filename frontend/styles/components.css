@@ -1,0 +1,10 @@
+.status-dot { width:7px; height:7px; border-radius:50%; background:#d5a34b; box-shadow:0 0 12px rgba(213,163,75,.35); }
+.status-dot.is-online { background:var(--color-accent); box-shadow:0 0 12px rgba(65,199,180,.4); }
+.status-dot.is-offline { background:#df6868; }
+.button { min-height:44px; padding:0 19px; border:1px solid transparent; border-radius:8px; cursor:pointer; font-size:12px; font-weight:650; transition:background .16s ease,border-color .16s ease,transform .16s ease; }
+.button:disabled { cursor:not-allowed; opacity:.42; }
+.button:not(:disabled):active { transform:translateY(1px); }
+.button-primary { color:#071b1a; background:var(--color-accent); }
+.button-primary:not(:disabled):hover { background:var(--color-accent-hover); }
+.button-secondary { color:var(--color-text); border-color:var(--color-border); background:var(--color-panel-soft); }
+.button-secondary:not(:disabled):hover { border-color:rgba(65,199,180,.45); background:#243342; }
