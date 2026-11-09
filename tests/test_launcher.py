@@ -1,7 +1,13 @@
 import logging
 from pathlib import Path
+from unittest.mock import patch
 
-from main import configure_startup_logging, is_existing_instance
+from main import (
+    configure_startup_logging,
+    get_venv_python,
+    is_existing_instance,
+    prepare_virtual_environment,
+)
 
 
 def test_startup_logging_creates_log_file(tmp_path) -> None:
@@ -33,3 +39,60 @@ def test_existing_mutex_is_detected() -> None:
     assert is_existing_instance(183) is True
     assert is_existing_instance(0) is False
     assert is_existing_instance(5) is False
+
+
+def test_prepare_environment_creates_venv_and_installs_requirements(tmp_path) -> None:
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("fastapi>=0.115,<1.0\n", encoding="utf-8")
+    interpreter = get_venv_python(tmp_path / ".venv")
+
+    with (
+        patch("main.venv.EnvBuilder.create") as create_venv,
+        patch("main.subprocess.run") as run,
+        patch("main._requirements_imports_available", return_value=False),
+        patch("main.get_venv_python", return_value=interpreter),
+        patch("main.get_venv_gui_python", return_value=interpreter),
+    ):
+        interpreter.parent.mkdir(parents=True)
+        interpreter.touch()
+        run.return_value.returncode = 0
+        run.return_value.stdout = ""
+        run.return_value.stderr = ""
+
+        _, should_relaunch = prepare_virtual_environment(
+            tmp_path, current_executable=Path(sys.executable)
+        )
+
+    create_venv.assert_called_once()
+    run.assert_called_once()
+    assert should_relaunch is True
+    assert (tmp_path / ".venv" / ".requirements.sha256").is_file()
+
+
+def test_prepare_environment_skips_pip_when_requirements_are_current(tmp_path) -> None:
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("fastapi>=0.115,<1.0\n", encoding="utf-8")
+    venv_dir = tmp_path / ".venv"
+    interpreter = get_venv_python(venv_dir)
+    venv_dir.mkdir()
+    interpreter.parent.mkdir(parents=True)
+    interpreter.touch()
+    import hashlib
+
+    marker = venv_dir / ".requirements.sha256"
+    marker.write_text(
+        hashlib.sha256(requirements.read_bytes()).hexdigest(), encoding="ascii"
+    )
+
+    with (
+        patch("main._requirements_imports_available", return_value=True),
+        patch("main.get_venv_python", return_value=interpreter),
+        patch("main.get_venv_gui_python", return_value=interpreter),
+        patch("main.subprocess.run") as run,
+    ):
+        _, should_relaunch = prepare_virtual_environment(
+            tmp_path, current_executable=interpreter
+        )
+
+    run.assert_not_called()
+    assert should_relaunch is True
