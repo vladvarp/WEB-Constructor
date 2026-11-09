@@ -57,6 +57,6 @@ export const deletePage = (projectId, pageId) => request(
   { method: "DELETE" },
 );
 export const reorderPages = (projectId, pageIds) => request(
-  `${projectPagesPath(projectId)}/order`,
+  `${projectPagesPath(projectId)}/reorder`,
   { method: "PUT", body: JSON.stringify({ page_ids: pageIds }) },
 );
