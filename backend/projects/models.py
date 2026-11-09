@@ -69,6 +69,7 @@ class ProjectAsset(StrictModel):
         if (
             not normalized
             or path.is_absolute()
+            or not path.parts
             or any(part in {"", ".", ".."} for part in path.parts)
             or ":" in path.parts[0]
         ):
