@@ -81,10 +81,7 @@ def _requirements_imports_available(requirements_file: Path) -> bool:
     return True
 
 
-def prepare_virtual_environment(
-    project_root: Path = PROJECT_ROOT,
-    current_executable: Path | None = None,
-) -> tuple[Path, bool]:
+def prepare_virtual_environment(project_root: Path = PROJECT_ROOT,) -> tuple[Path, bool]:
     """
     Create the project venv and install requirements when needed.
 
@@ -150,7 +147,6 @@ def prepare_virtual_environment(
             "Virtual environment and dependencies are up to date"
         )
 
-    current = (current_executable or Path(sys.executable)).resolve()
     should_relaunch = Path(sys.prefix).resolve() != venv_dir.resolve()
     if not gui_interpreter.is_file():
         raise FileNotFoundError(
