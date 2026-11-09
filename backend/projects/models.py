@@ -64,7 +64,7 @@ class ProjectAsset(StrictModel):
     @field_validator("path")
     @classmethod
     def require_safe_relative_path(cls, value: str) -> str:
-        normalized = value.replace("\\\\", "/").strip()
+        normalized = value.replace("\\", "/").strip()
         path = PurePosixPath(normalized)
         if (
             not normalized
