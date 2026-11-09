@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any
 from uuid import UUID
@@ -8,10 +8,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 CURRENT_SCHEMA_VERSION = 1
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 class StrictModel(BaseModel):
@@ -79,6 +75,7 @@ class ProjectAsset(StrictModel):
             or not path.parts
             or any(part in {"", ".", ".."} for part in path.parts)
             or ":" in path.parts[0]
+            or any(ord(char) < 32 for char in normalized)
         ):
             raise ValueError("Asset path must be a safe relative path")
         return path.as_posix()
