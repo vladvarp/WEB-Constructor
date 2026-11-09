@@ -41,10 +41,17 @@ class SiteSettings(StrictModel):
     language: str = Field(default="ru", min_length=2, max_length=12)
 
 
+class ContentNode(StrictModel):
+    # Editor-independent node. Rendering details live in adapters, not here.
+    id: UUID
+    type: str = Field(min_length=1, max_length=80, pattern=r"^[a-z][a-z0-9_-]*$")
+    props: dict[str, Any] = Field(default_factory=dict)
+    children: list[ContentNode] = Field(default_factory=list)
+
+
 class PageContent(StrictModel):
-    # Editor-independent document tree. Node contracts will be extended
-    # without coupling the stored format to a particular visual editor.
-    nodes: list[dict[str, Any]] = Field(default_factory=list)
+    # Editor-independent document tree; never stores editor DOM or editor JSON.
+    nodes: list[ContentNode] = Field(default_factory=list)
 
 
 class ProjectPage(StrictModel):
