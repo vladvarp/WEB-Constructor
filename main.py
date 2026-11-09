@@ -81,7 +81,7 @@ def _requirements_imports_available(requirements_file: Path) -> bool:
     return True
 
 
-def prepare_virtual_environment(project_root: Path = PROJECT_ROOT,) -> tuple[Path, bool]:
+def prepare_virtual_environment(project_root: Path = PROJECT_ROOT) -> tuple[Path, bool]:
     """
     Create the project venv and install requirements when needed.
 
@@ -102,7 +102,7 @@ def prepare_virtual_environment(project_root: Path = PROJECT_ROOT,) -> tuple[Pat
         logging.getLogger("web_constructor.startup").info(
             "Creating virtual environment at %s", venv_dir
         )
-        venv.EnvBuilder(with_pip=True).create(venv_dir)
+        venv.EnvBuilder(with_pip=True, clear=True).create(venv_dir)
 
     requirements_hash = hashlib.sha256(
         requirements_file.read_bytes()
