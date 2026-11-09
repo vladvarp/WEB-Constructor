@@ -80,3 +80,13 @@ def test_navigation_menu_api_and_validation(tmp_path, monkeypatch) -> None:
     assert deleted.status_code == 200 and deleted.json()["project"]["menus"] == []
     invalid = client.post(f"/api/projects/{project_id}/menus", json={"name": "Bad", "location": "../bad"})
     assert invalid.status_code == 422
+
+
+def test_new_project_has_editable_starter_homepage(tmp_path) -> None:
+    project = ProjectStore(tmp_path / "projects").create("Starter site")
+    home = next(page for page in project.pages if page.is_home)
+    assert len(home.content.nodes) == 2
+    hero = home.content.nodes[0]
+    assert hero.type == "section"
+    assert [node.type for node in hero.children] == ["eyebrow", "heading", "paragraph", "button"]
+    assert hero.children[1].props["text"] == "Пространство,\\nв котором хочется жить"
