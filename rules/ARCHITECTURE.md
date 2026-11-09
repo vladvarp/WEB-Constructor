@@ -14,11 +14,36 @@
 - Export Engine не импортирует UI или pywebview.
 - UI не меняет файлы проекта в обход сервисов хранения.
 - Модули используют публичные интерфейсы Core.
-- Формат проекта имеет schema_version и миграции.
+- Формат проекта имеет schema_version и последовательные миграции.
 - Экспорт содержит только используемые ресурсы и работает независимо от приложения.
+- Идентификаторы проектов — UUID; они не используются как произвольные пути файловой системы.
+- Запись project.json выполняется через временный файл и атомарную замену.
+
+## Хранение проектов
+- Windows: %LOCALAPPDATA%/WEB-Constructor/projects.
+- Linux/macOS fallback: $XDG_DATA_HOME/WEB-Constructor/projects или ~/.local/share/WEB-Constructor/projects.
+- Один проект — одна папка UUID.
+- Внутри: project.json, assets/, exports/.
+- project.json — единственный источник истины для метаданных сайта и дерева страниц.
+
+## Project Model v1
+- schema_version.
+- project: id, name, created_at, updated_at.
+- site: title, description, language.
+- pages: id, title, slug, is_home, content.nodes.
+- assets: id, name, path, mime_type.
+- У проекта ровно одна главная страница; slug страниц уникальны.
+- Узлы content.nodes хранятся как JSON-объекты и не привязаны к DOM или конкретному редактору.
+
+## API проектов
+- GET /api/projects — список.
+- POST /api/projects — создание.
+- GET /api/projects/{id} — открытие.
+- PUT /api/projects/{id} — сохранение.
+- DELETE /api/projects/{id} — удаление.
 
 ## Запуск
-launch.vbs → pythonw.exe → main.py → FastAPI/Uvicorn → окно pywebview.
+launch.vbs → pythonw.exe → main.py → проверка/создание .venv и зависимостей → FastAPI/Uvicorn → окно pywebview.
 FastAPI слушает только 127.0.0.1; порт выбирается при запуске. Frontend и API обслуживаются одним backend.
 
 ## Модули
