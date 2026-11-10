@@ -112,6 +112,7 @@ export function renderPages(pages, handlers = {}) {
     actions.lastElementChild.disabled = index === 0;
     addAction("↓", "Переместить ниже", () => handlers.onMove?.(page.id, 1), "button-quiet");
     actions.lastElementChild.disabled = index === pages.length - 1;
+    addAction("Редактор", "Открыть страницу в визуальном редакторе", () => handlers.onOpenEditor?.(page.id), "button-secondary");
     addAction("Изменить", "Изменить название и адрес", () => handlers.onEdit?.(page.id), "button-secondary");
     if (!page.is_home) {
       addAction("Сделать главной", "Назначить главной", () => handlers.onSetHome?.(page.id), "button-quiet");

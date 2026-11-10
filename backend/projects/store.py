@@ -131,7 +131,26 @@ class ProjectStore:
                     title="Главная",
                     slug="index",
                     is_home=True,
-                    content=PageContent(),
+                    content=PageContent(nodes=[
+                        {
+                            "id": uuid4(), "type": "section",
+                            "props": {"background": "#e9e5dc", "padding": "112px 9%", "layout": "hero"},
+                            "children": [
+                                {"id": uuid4(), "type": "eyebrow", "props": {"text": "АРХИТЕКТУРА · ИНТЕРЬЕРЫ · СРЕДА"}, "children": []},
+                                {"id": uuid4(), "type": "heading", "props": {"text": "Пространство,\nв котором хочется жить", "level": 1, "color": "#202b2b", "font_size": 64}, "children": []},
+                                {"id": uuid4(), "type": "paragraph", "props": {"text": "Создаём выразительную архитектуру и спокойные интерьеры, в которых каждая деталь работает на целое.", "color": "#596361", "font_size": 18}, "children": []},
+                                {"id": uuid4(), "type": "button", "props": {"text": "Обсудить проект", "background": "#263b38", "color": "#ffffff"}, "children": []},
+                            ],
+                        },
+                        {
+                            "id": uuid4(), "type": "section",
+                            "props": {"background": "#f7f6f2", "padding": "76px 9%", "layout": "content"},
+                            "children": [
+                                {"id": uuid4(), "type": "heading", "props": {"text": "Подход, основанный на смысле", "level": 2, "color": "#202b2b", "font_size": 38}, "children": []},
+                                {"id": uuid4(), "type": "paragraph", "props": {"text": "От первой идеи до последнего штриха — соединяем функциональность, эстетику и внимание к контексту.", "color": "#596361", "font_size": 17}, "children": []},
+                            ],
+                        },
+                    ]),
                 )
             ],
             assets=[],
