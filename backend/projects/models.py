@@ -50,6 +50,19 @@ class PageContent(StrictModel):
     # Editor-independent document tree; never stores editor DOM or editor JSON.
     nodes: list[ContentNode] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def require_unique_node_ids(self) -> PageContent:
+        seen: set[UUID] = set()
+        def walk(nodes: list[ContentNode]) -> None:
+            for node in nodes:
+                if node.id in seen:
+                    raise ValueError("Content node identifiers must be unique")
+                seen.add(node.id)
+                if node.children:
+                    walk(node.children)
+        walk(self.nodes)
+        return self
+
 
 class ProjectPage(StrictModel):
     id: UUID

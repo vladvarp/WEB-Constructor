@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -120,6 +121,40 @@ def test_page_content_uses_nested_editor_independent_nodes(tmp_path) -> None:
     saved = store.save(project.project.id, data)
     assert saved.pages[0].content.nodes[0].type == "section"
     assert saved.pages[0].content.nodes[0].children[0].props["text"] == "Hello"
+
+
+def test_nested_content_tree_round_trips_and_duplicate_node_ids_are_rejected(tmp_path) -> None:
+    store = ProjectStore(tmp_path / "projects")
+    project = store.create("Nested content")
+    data = project.model_dump(mode="json")
+    section_id, heading_id, text_id = str(uuid4()), str(uuid4()), str(uuid4())
+    data["pages"][0]["content"]["nodes"] = [{
+        "id": section_id, "type": "section", "props": {"class": "hero", "background": "#ffffff"},
+        "children": [{"id": heading_id, "type": "heading", "props": {"text": "Title", "level": 1},
+                      "children": [{"id": text_id, "type": "text", "props": {"text": "Nested"}, "children": []}]}],
+    }]
+    saved = store.save(project.project.id, data)
+    loaded = store.get(project.project.id)
+    section = loaded.pages[0].content.nodes[0]
+    heading = section.children[0]
+    assert saved.schema_version == 2
+    assert section.props == {"class": "hero", "background": "#ffffff"}
+    assert heading.props == {"text": "Title", "level": 1}
+    assert heading.children[0].props == {"text": "Nested"}
+    assert heading.children[0].children == []
+    shared = str(uuid4())
+    data["pages"][0]["content"]["nodes"] = [{
+        "id": shared, "type": "section", "props": {"class": "hero"},
+        "children": [{"id": shared, "type": "text", "props": {"text": "Dup"}, "children": []}],
+    }]
+    with pytest.raises(ValueError, match="Content node identifiers must be unique"):
+        store.save(project.project.id, data)
+    project_file = tmp_path / "projects" / str(project.project.id) / "project.json"
+    raw = json.loads(project_file.read_text(encoding="utf-8"))
+    raw["pages"][0]["content"]["nodes"] = data["pages"][0]["content"]["nodes"]
+    project_file.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="Project data is invalid"):
+        store.get(project.project.id)
 
 
 def test_page_lifecycle_home_page_and_order(tmp_path) -> None:
