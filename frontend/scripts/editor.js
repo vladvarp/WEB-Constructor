@@ -1,4 +1,5 @@
 import { saveProject } from "./api.js";
+import { setBackendStatus, showToast } from "./ui.js";
 import {
   contains,
   duplicateNode,
@@ -27,6 +28,7 @@ function makeNode(type) {
     heading: { text: "Новый заголовок", level: 2, color: "#202b2b", font_size: 36 },
     paragraph: { text: "Добавьте описание вашего проекта.", color: "#596361", font_size: 17 },
     button: { text: "Подробнее", background: "#263b38", color: "#ffffff" },
+    eyebrow: { text: "Новый надзаголовок" },
   };
   return { id: makeId(), type, props: defaults[type], children: [] };
 }
@@ -42,6 +44,22 @@ function layerLabel(node) {
 
 function safeColor(value, fallback) {
   return /^#[0-9a-f]{3,8}$/i.test(String(value || "")) ? value : fallback;
+}
+
+function isAbsoluteHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && Boolean(url.hostname) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function saveFailure(error) {
+  const raw = String((error && error.message) || "");
+  const offline = error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw);
+  if (offline) return { offline: true, message: "Не удалось сохранить страницу: нет соединения с сервером." };
+  return { offline: false, message: raw ? `Не удалось сохранить страницу. ${raw}` : "Не удалось сохранить страницу." };
 }
 
 function element(tag, className, text) {
@@ -60,6 +78,8 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
   let libraryTab = "elements";
   let history = [clone(page.content.nodes)];
   let historyIndex = 0;
+  let savedHistoryIndex = 0;
+  let dirty = false;
   let gesture = null;
   let dropIntent = null;
   let suppressClick = false;
@@ -70,11 +90,19 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
   const toolbar = element("div", "editor-toolbar");
   const back = element("button", "button button-quiet", "← К проекту");
   back.type = "button";
-  back.addEventListener("click", onBack);
+  back.addEventListener("click", () => {
+    if (dirty && !window.confirm("Есть несохранённые изменения. Выйти без сохранения?")) return;
+    if (dirty) page.content.nodes = clone(history[savedHistoryIndex]);
+    onBack();
+  });
   const title = element("div", "editor-page-title", page.title);
   const actions = element("div", "editor-toolbar-actions");
-  const undo = element("button", "button button-secondary button-small", "↶");
-  const redo = element("button", "button button-secondary button-small", "↷");
+  const undo = element("button", "button button-secondary", "Отменить");
+  const redo = element("button", "button button-secondary", "Повторить");
+  undo.title = "Отменить";
+  redo.title = "Повторить";
+  undo.setAttribute("aria-label", "Отменить");
+  redo.setAttribute("aria-label", "Повторить");
   const save = element("button", "button button-primary", "Сохранить");
   [undo, redo, save].forEach((button) => button.type = "button");
   actions.append(undo, redo, save);
@@ -88,16 +116,17 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
   [elementsTab, layersTab].forEach((button) => button.type = "button");
   tabs.append(elementsTab, layersTab);
   const addSection = element("button", "editor-add-item", "＋ Секция");
+  const addEyebrow = element("button", "editor-add-item", "＋ Надзаголовок");
   const addHeading = element("button", "editor-add-item", "＋ Заголовок");
   const addParagraph = element("button", "editor-add-item", "＋ Текст");
   const addButton = element("button", "editor-add-item", "＋ Кнопка");
-  const elementButtons = [addSection, addHeading, addParagraph, addButton];
+  const elementButtons = [addSection, addEyebrow, addHeading, addParagraph, addButton];
   elementButtons.forEach((button) => button.type = "button");
-  const hint = element("p", "editor-hint", "Секция добавляется в корень страницы. Заголовок, текст и кнопка попадают в секцию. Порядок можно менять перетаскиванием на холсте.");
+  const hint = element("p", "editor-hint", "Секция добавляется в корень страницы. Надзаголовок, заголовок, текст и кнопка попадают в секцию. Порядок можно менять перетаскиванием на холсте.");
   const layersHost = element("div");
   layersHost.hidden = true;
   layersHost.style.width = "100%";
-  library.append(tabs, addSection, addHeading, addParagraph, addButton, hint, layersHost);
+  library.append(tabs, addSection, addEyebrow, addHeading, addParagraph, addButton, hint, layersHost);
 
   const stage = element("main", "editor-stage");
   const viewportBar = element("div", "editor-viewport-bar");
@@ -109,6 +138,11 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
     viewportButtons[key] = button;
     viewportBar.append(button);
   });
+  viewportBar.append(element(
+    "p",
+    "editor-viewport-note",
+    "Пока меняется только ширина рамки. Отдельных стилей для планшета и телефона ещё нет.",
+  ));
   const canvasFrame = element("div", "editor-canvas-frame");
   const canvas = element("div", "editor-canvas");
   canvasFrame.append(canvas);
@@ -141,6 +175,14 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
     history = history.slice(0, historyIndex + 1);
     history.push(clone(page.content.nodes));
     historyIndex = history.length - 1;
+    dirty = true;
+    render();
+  }
+
+  function restoreHistory(nextIndex) {
+    historyIndex = nextIndex;
+    page.content.nodes = clone(history[historyIndex]);
+    dirty = historyIndex !== savedHistoryIndex;
     render();
   }
 
@@ -192,8 +234,7 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
       ["Удалить", "×", () => deleteNode(nodeId), missing, true],
     ];
     const wrap = element("div", compact ? "editor-layer-actions" : "");
-    if (compact) wrap.style.flexShrink = "0";
-    else {
+    if (!compact) {
       wrap.style.display = "flex";
       wrap.style.flexWrap = "wrap";
       wrap.style.gap = "4px";
@@ -293,13 +334,13 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
       inspectorBody.textContent = "Выберите элемент на холсте или в слоях";
       return;
     }
-    inspectorBody.append(element("div", "editor-selected-type", String(node.type || "").toUpperCase()));
+    inspectorBody.append(element("div", "editor-selected-type", TYPE_LABELS[node.type] || String(node.type || "Элемент")));
     if (node.type === "section") {
       const label = element("label", "field-label", "Фон секции");
       const color = element("input", "text-field");
       color.type = "color";
       color.value = safeColor(node.props.background, "#f7f6f2");
-      color.addEventListener("input", () => { node.props.background = color.value; renderCanvas(); });
+      color.addEventListener("input", () => { node.props.background = color.value; dirty = true; renderCanvas(); });
       color.addEventListener("change", record);
       inspectorBody.append(label, color);
     } else {
@@ -307,9 +348,30 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
       const textInput = element("textarea", "text-field text-area");
       textInput.rows = 5;
       textInput.value = node.props.text || "";
-      textInput.addEventListener("input", () => { node.props.text = textInput.value; renderCanvas(); });
+      textInput.addEventListener("input", () => { node.props.text = textInput.value; dirty = true; renderCanvas(); });
       textInput.addEventListener("change", record);
       inspectorBody.append(label, textInput);
+      if (node.type === "button") {
+        const hrefLabel = element("label", "field-label", "Адрес");
+        const hrefInput = element("input", "text-field");
+        hrefInput.type = "text";
+        hrefInput.inputMode = "url";
+        hrefInput.placeholder = "Необязательно, https://…";
+        hrefInput.autocomplete = "off";
+        hrefInput.value = typeof node.props.href === "string" ? node.props.href : "";
+        const hrefHint = element("p", "field-error", "Укажите полный адрес, начиная с http:// или https://.");
+        const applyHref = (markDirty) => {
+          const value = hrefInput.value.trim();
+          if (value) node.props.href = value;
+          else delete node.props.href;
+          hrefHint.hidden = !value || isAbsoluteHttpUrl(value);
+          if (markDirty) dirty = true;
+        };
+        hrefInput.addEventListener("input", () => { applyHref(true); renderCanvas(); });
+        hrefInput.addEventListener("change", record);
+        inspectorBody.append(hrefLabel, hrefInput, hrefHint);
+        applyHref(false);
+      }
       if (node.type === "heading" || node.type === "paragraph") {
         const sizeLabel = element("label", "field-label", "Размер текста");
         const size = element("input", "text-field");
@@ -317,13 +379,13 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
         size.min = "12";
         size.max = node.type === "heading" ? "88" : "36";
         size.value = Number(node.props.font_size) || (node.type === "heading" ? 36 : 17);
-        size.addEventListener("input", () => { node.props.font_size = Number(size.value); renderCanvas(); });
+        size.addEventListener("input", () => { node.props.font_size = Number(size.value); dirty = true; renderCanvas(); });
         size.addEventListener("change", record);
         const colorLabel = element("label", "field-label", "Цвет текста");
         const color = element("input", "text-field");
         color.type = "color";
         color.value = safeColor(node.props.color, "#202b2b");
-        color.addEventListener("input", () => { node.props.color = color.value; renderCanvas(); });
+        color.addEventListener("input", () => { node.props.color = color.value; dirty = true; renderCanvas(); });
         color.addEventListener("change", record);
         inspectorBody.append(sizeLabel, size, colorLabel, color);
       }
@@ -332,12 +394,44 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
     inspectorBody.append(structureActions(node.id, false));
   }
 
+  function drawMenuItems(items) {
+    const list = element("ul", "site-menu-list");
+    items.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const row = element("li", "site-menu-item");
+      row.append(element("span", "site-menu-link", item.label || ""));
+      if (Array.isArray(item.children) && item.children.length) {
+        const nested = drawMenuItems(item.children);
+        nested.classList.add("site-menu-nested");
+        row.append(nested);
+      }
+      list.append(row);
+    });
+    return list;
+  }
+
+  function renderMenus(location) {
+    const menus = (project.menus || []).filter((menu) => (
+      menu && menu.location === location && Array.isArray(menu.items) && menu.items.length
+    ));
+    if (!menus.length) return null;
+    const bar = element("nav", `site-menu site-menu-${location}`);
+    bar.setAttribute("aria-label", location === "header" ? "Шапка сайта" : "Подвал");
+    menus.forEach((menu) => bar.append(drawMenuItems(menu.items)));
+    return bar;
+  }
+
   function renderCanvas() {
     canvas.replaceChildren();
     canvas.classList.toggle("viewport-tablet", viewport === "tablet");
     canvas.classList.toggle("viewport-mobile", viewport === "mobile");
     canvas.classList.toggle("viewport-desktop", viewport === "desktop");
-    page.content.nodes.forEach((node) => canvas.append(drawNode(node)));
+    const header = renderMenus("header");
+    const footer = renderMenus("footer");
+    if (header) canvas.append(header);
+    if (!page.content.nodes.length) canvas.append(element("p", "editor-canvas-empty", "На странице нет элементов"));
+    else page.content.nodes.forEach((node) => canvas.append(drawNode(node)));
+    if (footer) canvas.append(footer);
   }
 
   function buildLayerList(nodes, root) {
@@ -346,12 +440,7 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
       if (!node || typeof node !== "object") return;
       const item = element("li", "editor-layer");
       item.classList.toggle("is-selected", node.id === selectedId);
-      const label = element("span", "", layerLabel(node));
-      label.style.flex = "1";
-      label.style.minWidth = "0";
-      label.style.overflow = "hidden";
-      label.style.textOverflow = "ellipsis";
-      label.style.whiteSpace = "nowrap";
+      const label = element("span", "editor-layer-label", layerLabel(node));
       item.append(label, structureActions(node.id, true));
       if (Array.isArray(node.children) && node.children.length) item.append(buildLayerList(node.children, false));
       item.addEventListener("click", (event) => {
@@ -537,20 +626,17 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
   elementsTab.addEventListener("click", () => { libraryTab = "elements"; renderLibrary(); });
   layersTab.addEventListener("click", () => { libraryTab = "layers"; renderLibrary(); });
   addSection.addEventListener("click", () => add("section"));
+  addEyebrow.addEventListener("click", () => add("eyebrow"));
   addHeading.addEventListener("click", () => add("heading"));
   addParagraph.addEventListener("click", () => add("paragraph"));
   addButton.addEventListener("click", () => add("button"));
   undo.addEventListener("click", () => {
     if (historyIndex <= 0) return;
-    historyIndex -= 1;
-    page.content.nodes = clone(history[historyIndex]);
-    render();
+    restoreHistory(historyIndex - 1);
   });
   redo.addEventListener("click", () => {
     if (historyIndex >= history.length - 1) return;
-    historyIndex += 1;
-    page.content.nodes = clone(history[historyIndex]);
-    render();
+    restoreHistory(historyIndex + 1);
   });
   save.addEventListener("click", async () => {
     save.disabled = true;
@@ -558,14 +644,20 @@ export function mountVisualEditor(host, sourceProject, pageId, onSaved, onBack) 
       const result = await saveProject(project);
       project = result.project;
       page = project.pages.find((item) => item.id === pageId);
+      savedHistoryIndex = historyIndex;
+      dirty = false;
       onSaved(project);
+      setBackendStatus(true, "Система готова");
       save.textContent = "Сохранено";
+      render();
       window.setTimeout(() => { save.textContent = "Сохранить"; save.disabled = false; }, 1200);
     } catch (error) {
       save.disabled = false;
-      save.textContent = "Ошибка сохранения";
+      save.textContent = "Сохранить";
+      const failure = saveFailure(error);
+      if (failure.offline) setBackendStatus(false, "Нет соединения");
+      showToast(failure.message, true);
       console.error("Visual editor save failed:", error);
-      window.alert(error.message);
     }
   });
   render();

@@ -71,7 +71,7 @@
               <button class="button button-primary" id="add-page-button" type="button">＋ Добавить страницу</button>
             </div>
             <div id="page-list" class="page-list"></div>
-            <p class="muted-note">Содержимое страниц пока не редактируется. На этом этапе доступны структура, адреса и главная страница.</p>
+            <p class="muted-note">Содержимое страницы меняется кнопкой «Редактор».</p>
           </div>
 
           <section class="settings-card navigation-card">
@@ -90,7 +90,7 @@
                   <div><label class="field-label" for="navigation-item-kind">Тип ссылки</label><select class="text-field" id="navigation-item-kind"><option value="page">Страница проекта</option><option value="external">Внешняя ссылка</option></select></div>
                 </div>
                 <div id="navigation-page-target-wrap"><label class="field-label" for="navigation-page-target">Страница</label><select class="text-field" id="navigation-page-target"></select></div>
-                <div id="navigation-url-target-wrap" hidden><label class="field-label" for="navigation-url-target">Адрес (HTTP/HTTPS)</label><input class="text-field" id="navigation-url-target" type="url" placeholder="https://example.com"></div>
+                <div id="navigation-url-target-wrap" hidden><label class="field-label" for="navigation-url-target">Адрес (HTTP/HTTPS)</label><input class="text-field" id="navigation-url-target" type="text" inputmode="url" placeholder="https://example.com" autocomplete="off"><p class="field-error" id="navigation-url-error" hidden>Укажите полный адрес, начиная с http:// или https://.</p></div>
                 <label class="field-label" for="navigation-parent-target">Вложить в пункт</label><select class="text-field" id="navigation-parent-target"><option value="">Верхний уровень</option></select>
                 <div class="dialog-actions"><button class="button button-primary" type="submit">Добавить пункт</button></div>
               </form>
@@ -131,7 +131,7 @@
     <dialog id="create-page-dialog" class="dialog">
       <form id="create-page-form">
         <div class="dialog-heading">
-          <div><div class="eyebrow">NEW PAGE</div><h2>Добавить страницу</h2></div>
+          <div><div class="eyebrow" id="page-dialog-eyebrow">NEW PAGE</div><h2 id="page-dialog-title">Добавить страницу</h2></div>
           <button class="icon-button" id="close-create-page-dialog" type="button" aria-label="Закрыть">×</button>
         </div>
         <label class="field-label" for="new-page-title">Название страницы</label>
@@ -141,13 +141,13 @@
         <p class="muted-note">Используйте латинские буквы, цифры и дефисы. Адрес должен быть уникальным.</p>
         <div class="dialog-actions">
           <button class="button button-secondary" id="cancel-create-page" type="button">Отмена</button>
-          <button class="button button-primary" type="submit">Добавить</button>
+          <button class="button button-primary" id="page-dialog-submit" type="submit">Добавить</button>
         </div>
       </form>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <footer class="footer"><span>WEB-Constructor</span><span>Visual editor · 0.5.0</span></footer>
+    <footer class="footer"><span>WEB-Constructor</span><span>Visual editor · 0.6.1</span></footer>
   </div>
   <script type="module" src="/scripts/app.js"></script>
 </body>
